@@ -138,7 +138,12 @@ fn scan_applications_dirs(config: &Config) -> Vec<DiscoveredEntry> {
                 continue;
             };
             let parsed = desktop::parse_desktop(&text);
-            let via_marker = parsed.ogm.as_ref().map(|m| m.managed).unwrap_or(false);
+            let managed = parsed.ogm.as_ref().and_then(|m| m.managed);
+            if managed == Some(false) {
+                // Explicit opt-out: X-OGM-Managed=false wins over glob discovery.
+                continue;
+            }
+            let via_marker = managed == Some(true);
             if !via_marker && !via_glob {
                 continue;
             }
@@ -163,7 +168,7 @@ fn synthesize_marker_overlay(
 ) -> Vec<CatalogEntry> {
     let mut overlay = Vec::new();
     for d in discovered {
-        let Some(meta) = d.entry.ogm.as_ref().filter(|m| m.managed) else {
+        let Some(meta) = d.entry.ogm.as_ref().filter(|m| m.managed == Some(true)) else {
             continue;
         };
         let base = catalog

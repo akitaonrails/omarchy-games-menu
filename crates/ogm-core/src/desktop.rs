@@ -5,8 +5,11 @@ use crate::model::Category;
 /// keys exist at all.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct OgmMeta {
-    /// true only for the exact trimmed value "true" of X-OGM-Managed.
-    pub managed: bool,
+    /// X-OGM-Managed tri-state: `Some(true)` marks the entry as managed,
+    /// `Some(false)` is an explicit opt-out that wins over glob discovery,
+    /// `None` when the key is absent. Only "true" counts as opted in; any
+    /// other explicit value is an opt-out.
+    pub managed: Option<bool>,
     pub category: Option<Category>,
     pub github: Option<String>,
     pub sgdb_query: Option<String>,
@@ -89,7 +92,7 @@ pub fn parse_desktop(content: &str) -> DesktopEntry {
             let meta = entry.ogm.get_or_insert_with(OgmMeta::default);
             let value = value.trim();
             match key_lower.as_str() {
-                "x-ogm-managed" => meta.managed = value == "true",
+                "x-ogm-managed" => meta.managed = Some(value == "true"),
                 "x-ogm-category" => meta.category = Category::from_name(value),
                 "x-ogm-github" => meta.github = Some(value.to_string()),
                 "x-ogm-sgdbquery" => meta.sgdb_query = Some(value.to_string()),
@@ -191,7 +194,7 @@ StartupWMClass=OR2006C2C.exe;
             X-OGM-Managed=true\nX-OGM-Category=port\n\
             X-OGM-GitHub=HarbourMasters/Shipwright\nX-OGM-SGDBQuery=Ship of Harkinian\n";
         let meta = parse_desktop(content).ogm.unwrap();
-        assert!(meta.managed);
+        assert_eq!(meta.managed, Some(true));
         assert_eq!(meta.category, Some(Category::Port));
         assert_eq!(meta.github.as_deref(), Some("HarbourMasters/Shipwright"));
         assert_eq!(meta.sgdb_query.as_deref(), Some("Ship of Harkinian"));
@@ -201,24 +204,26 @@ StartupWMClass=OR2006C2C.exe;
     fn ogm_marker_only() {
         let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=true\n";
         let meta = parse_desktop(content).ogm.unwrap();
-        assert!(meta.managed);
+        assert_eq!(meta.managed, Some(true));
         assert_eq!(meta.category, None);
         assert!(meta.github.is_none() && meta.sgdb_query.is_none());
     }
 
     #[test]
-    fn ogm_managed_requires_exact_true() {
+    fn ogm_managed_is_tri_state() {
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=false\n";
+        assert_eq!(parse_desktop(content).ogm.unwrap().managed, Some(false));
         let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=yes\n";
-        assert!(!parse_desktop(content).ogm.unwrap().managed);
+        assert_eq!(parse_desktop(content).ogm.unwrap().managed, Some(false));
         let content = "[Desktop Entry]\nName=X\nX-OGM-Managed= true \n";
-        assert!(parse_desktop(content).ogm.unwrap().managed);
+        assert_eq!(parse_desktop(content).ogm.unwrap().managed, Some(true));
     }
 
     #[test]
     fn ogm_keys_are_case_insensitive_and_unknown_category_is_none() {
         let content = "[Desktop Entry]\nName=X\nx-ogm-managed=true\nX-Ogm-Category=bogus\n";
         let meta = parse_desktop(content).ogm.unwrap();
-        assert!(meta.managed);
+        assert_eq!(meta.managed, Some(true));
         assert_eq!(meta.category, None);
     }
 
