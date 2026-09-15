@@ -122,6 +122,7 @@ mod tests {
             icon: None,
             comment: None,
             categories: vec![],
+            ogm: None,
         }
     }
 

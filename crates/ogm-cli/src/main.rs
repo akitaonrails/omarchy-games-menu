@@ -112,7 +112,14 @@ fn parse_category(s: &str) -> Result<Category> {
         .map_err(|_| anyhow::anyhow!("unknown category {s:?} (port, decomp, recomp, fangame, wine, arcade, emulator, tool, custom)"))
 }
 
-fn scan_applications_dirs(config: &Config) -> Vec<(desktop::DesktopEntry, String)> {
+struct DiscoveredEntry {
+    entry: desktop::DesktopEntry,
+    stem: String,
+    /// Selected via X-OGM-Managed=true (vs the legacy desktop_globs).
+    via_marker: bool,
+}
+
+fn scan_applications_dirs(config: &Config) -> Vec<DiscoveredEntry> {
     let mut out = Vec::new();
     for dir in &config.applications_dirs {
         let Ok(read_dir) = std::fs::read_dir(dir) else {
@@ -126,17 +133,63 @@ fn scan_applications_dirs(config: &Config) -> Vec<(desktop::DesktopEntry, String
             let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
                 continue;
             };
-            if !matches_any(stem, &config.desktop_globs) {
-                continue;
-            }
+            let via_glob = matches_any(stem, &config.desktop_globs);
             let Ok(text) = std::fs::read_to_string(&path) else {
                 continue;
             };
-            out.push((desktop::parse_desktop(&text), stem.to_string()));
+            let parsed = desktop::parse_desktop(&text);
+            let via_marker = parsed.ogm.as_ref().map(|m| m.managed).unwrap_or(false);
+            if !via_marker && !via_glob {
+                continue;
+            }
+            out.push(DiscoveredEntry {
+                entry: parsed,
+                stem: stem.to_string(),
+                via_marker,
+            });
         }
     }
-    out.sort_by(|a, b| a.1.cmp(&b.1));
+    out.sort_by(|a, b| a.stem.cmp(&b.stem));
     out
+}
+
+/// X-OGM-* metadata becomes the topmost catalog-like override: it wins over
+/// catalog.d fragments and the bundled catalog, but fields it doesn't set
+/// (github/sgdb_query/category, and always name/version_file) carry over from
+/// the catalog entry with the same desktop_id.
+fn synthesize_marker_overlay(
+    discovered: &[DiscoveredEntry],
+    catalog: &[CatalogEntry],
+) -> Vec<CatalogEntry> {
+    let mut overlay = Vec::new();
+    for d in discovered {
+        let Some(meta) = d.entry.ogm.as_ref().filter(|m| m.managed) else {
+            continue;
+        };
+        let base = catalog
+            .iter()
+            .find(|e| e.desktop_id.as_deref() == Some(d.stem.as_str()));
+        overlay.push(CatalogEntry {
+            id: base.map(|e| e.id.clone()).unwrap_or_else(|| d.stem.clone()),
+            desktop_id: Some(d.stem.clone()),
+            name: base.and_then(|e| e.name.clone()),
+            category: meta
+                .category
+                .or_else(|| base.map(|e| e.category))
+                .unwrap_or(Category::Custom),
+            github: meta
+                .github
+                .clone()
+                .or_else(|| base.and_then(|e| e.github.clone())),
+            sgdb_query: meta
+                .sgdb_query
+                .clone()
+                .or_else(|| base.and_then(|e| e.sgdb_query.clone())),
+            version_file: base.and_then(|e| e.version_file.clone()),
+            hidden_default: base.map(|e| e.hidden_default).unwrap_or(false),
+        });
+    }
+    overlay
 }
 
 fn detect_installed_versions(catalog: &[CatalogEntry]) -> HashMap<String, String> {
@@ -169,10 +222,16 @@ fn run_scan(paths: &Paths) -> Result<State> {
     let prev = State::load(paths).context("loading state.json")?;
     let (catalog, fragments) = load_full_catalog(paths, &config)?;
     let discovered = scan_applications_dirs(&config);
+    let catalog =
+        merge_catalog_entries(&catalog, &synthesize_marker_overlay(&discovered, &catalog));
     let versions = detect_installed_versions(&catalog);
+    let discovered_pairs: Vec<(desktop::DesktopEntry, String)> = discovered
+        .iter()
+        .map(|d| (d.entry.clone(), d.stem.clone()))
+        .collect();
     let games = reconcile(
         &catalog,
-        &discovered,
+        &discovered_pairs,
         &user.custom,
         &user.hidden_set(),
         &prev.games,
@@ -444,6 +503,14 @@ fn run_doctor(paths: &Paths) -> Result<()> {
         println!("  warning: {w}");
     }
     println!("discovered:        {}", discovered.len());
+    println!(
+        "  via X-OGM marker: {}",
+        discovered.iter().filter(|d| d.via_marker).count()
+    );
+    println!(
+        "  via legacy glob only: {}",
+        discovered.iter().filter(|d| !d.via_marker).count()
+    );
     println!("custom:            {}", user.custom.len());
     println!("hidden:            {}", user.hidden.len());
     println!("state games:       {}", state.games.len());
@@ -542,5 +609,76 @@ mod tests {
     fn parses_categories_from_cli_strings() {
         assert_eq!(parse_category("wine").unwrap(), Category::Wine);
         assert!(parse_category("nope").is_err());
+    }
+
+    fn marked(stem: &str, content: &str) -> DiscoveredEntry {
+        DiscoveredEntry {
+            entry: desktop::parse_desktop(content),
+            stem: stem.into(),
+            via_marker: true,
+        }
+    }
+
+    fn catalog_fixture() -> Vec<CatalogEntry> {
+        vec![CatalogEntry {
+            id: "soh".into(),
+            desktop_id: Some("gaming-soh".into()),
+            name: Some("Ship of Harkinian".into()),
+            category: Category::Port,
+            github: Some("HarbourMasters/Shipwright".into()),
+            sgdb_query: Some("Ship of Harkinian".into()),
+            version_file: None,
+            hidden_default: false,
+        }]
+    }
+
+    #[test]
+    fn marker_category_overrides_catalog_category() {
+        let d = marked(
+            "gaming-soh",
+            "[Desktop Entry]\nName=SoH\nX-OGM-Managed=true\nX-OGM-Category=wine\n",
+        );
+        let overlay = synthesize_marker_overlay(&[d], &catalog_fixture());
+        assert_eq!(overlay.len(), 1);
+        assert_eq!(overlay[0].id, "soh", "catalog id carries over");
+        assert_eq!(overlay[0].category, Category::Wine);
+        assert_eq!(
+            overlay[0].github.as_deref(),
+            Some("HarbourMasters/Shipwright"),
+            "github falls through from catalog"
+        );
+        assert_eq!(overlay[0].name.as_deref(), Some("Ship of Harkinian"));
+    }
+
+    #[test]
+    fn marker_github_and_sgdb_override_catalog() {
+        let d = marked(
+            "gaming-soh",
+            "[Desktop Entry]\nName=SoH\nX-OGM-Managed=true\nX-OGM-GitHub=fork/soh\nX-OGM-SGDBQuery=SoH\n",
+        );
+        let overlay = synthesize_marker_overlay(&[d], &catalog_fixture());
+        assert_eq!(overlay[0].github.as_deref(), Some("fork/soh"));
+        assert_eq!(overlay[0].sgdb_query.as_deref(), Some("SoH"));
+        assert_eq!(overlay[0].category, Category::Port, "catalog category kept");
+    }
+
+    #[test]
+    fn marker_without_category_or_catalog_defaults_custom() {
+        let d = marked("zz-new", "[Desktop Entry]\nName=New\nX-OGM-Managed=true\n");
+        let overlay = synthesize_marker_overlay(&[d], &catalog_fixture());
+        assert_eq!(overlay[0].id, "zz-new");
+        assert_eq!(overlay[0].category, Category::Custom);
+        assert!(overlay[0].github.is_none());
+    }
+
+    #[test]
+    fn unmarked_entries_produce_no_overlay() {
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=yes\n";
+        let d = DiscoveredEntry {
+            entry: desktop::parse_desktop(content),
+            stem: "gaming-soh".into(),
+            via_marker: false,
+        };
+        assert!(synthesize_marker_overlay(&[d], &catalog_fixture()).is_empty());
     }
 }

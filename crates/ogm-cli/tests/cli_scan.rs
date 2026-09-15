@@ -247,4 +247,44 @@ fn scan_writes_state_json_against_temp_xdg() {
         .cloned()
         .unwrap();
     assert_eq!(probe["play_count"], 2);
+
+    // X-OGM metadata: marker entry overrides bundled category, keeps catalog github;
+    // marker-only file not matching globs is still discovered.
+    fs::write(
+        apps.join("gaming-starship.desktop"),
+        "[Desktop Entry]\nName=Starship - Star Fox 64 (on gaming)\n\
+         Exec=/usr/bin/distrobox-enter -n gaming -- /run/starship\nIcon=applications-games\n\
+         X-OGM-Managed=true\nX-OGM-Category=wine\n",
+    )
+    .unwrap();
+    fs::write(
+        apps.join("zz-marker-game.desktop"),
+        "[Desktop Entry]\nName=Marker Only Game\nExec=/bin/true\n\
+         X-OGM-Managed=true\nX-OGM-Category=fangame\nX-OGM-SGDBQuery=Marker Game\n",
+    )
+    .unwrap();
+    let out = {
+        let mut cmd = ogm();
+        set_xdg(&mut cmd, root);
+        cmd.arg("scan").output().unwrap()
+    };
+    assert!(out.status.success());
+    let state: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&state_path).unwrap()).unwrap();
+    let games = state["games"].as_array().unwrap();
+    let starship = games.iter().find(|g| g["id"] == "starship").unwrap();
+    assert_eq!(
+        starship["category"], "wine",
+        "X-OGM-Category beats catalog port"
+    );
+    assert_eq!(
+        starship["github"]["repo"], "HarbourMasters/Starship",
+        "github falls through from bundled catalog"
+    );
+    let marker = games
+        .iter()
+        .find(|g| g["id"] == "zz-marker-game")
+        .expect("marker-only entry discovered without glob match");
+    assert_eq!(marker["category"], "fangame");
+    assert_eq!(marker["name"], "Marker Only Game");
 }

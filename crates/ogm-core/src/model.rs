@@ -28,6 +28,21 @@ impl Category {
             Category::Custom => "custom",
         }
     }
+
+    pub fn from_name(s: &str) -> Option<Category> {
+        Some(match s.trim().to_lowercase().as_str() {
+            "port" => Category::Port,
+            "decomp" => Category::Decomp,
+            "recomp" => Category::Recomp,
+            "fangame" => Category::Fangame,
+            "wine" => Category::Wine,
+            "arcade" => Category::Arcade,
+            "emulator" => Category::Emulator,
+            "tool" => Category::Tool,
+            "custom" => Category::Custom,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

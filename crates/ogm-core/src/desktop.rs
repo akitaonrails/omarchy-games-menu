@@ -1,3 +1,17 @@
+use crate::model::Category;
+
+/// Game-menu metadata embedded in a .desktop file via `X-OGM-*` keys
+/// (rendered by distrobox-gaming). `None` on DesktopEntry when no such
+/// keys exist at all.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OgmMeta {
+    /// true only for the exact trimmed value "true" of X-OGM-Managed.
+    pub managed: bool,
+    pub category: Option<Category>,
+    pub github: Option<String>,
+    pub sgdb_query: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DesktopEntry {
     pub name: Option<String>,
@@ -5,6 +19,7 @@ pub struct DesktopEntry {
     pub icon: Option<String>,
     pub comment: Option<String>,
     pub categories: Vec<String>,
+    pub ogm: Option<OgmMeta>,
 }
 
 const FIELD_CODES: [&str; 16] = [
@@ -69,6 +84,19 @@ pub fn parse_desktop(content: &str) -> DesktopEntry {
         let Some((key, value)) = line.split_once('=') else {
             continue;
         };
+        let key_lower = key.trim().to_lowercase();
+        if key_lower.starts_with("x-ogm-") {
+            let meta = entry.ogm.get_or_insert_with(OgmMeta::default);
+            let value = value.trim();
+            match key_lower.as_str() {
+                "x-ogm-managed" => meta.managed = value == "true",
+                "x-ogm-category" => meta.category = Category::from_name(value),
+                "x-ogm-github" => meta.github = Some(value.to_string()),
+                "x-ogm-sgdbquery" => meta.sgdb_query = Some(value.to_string()),
+                _ => {}
+            }
+            continue;
+        }
         match key.trim() {
             "Name" => entry.name = Some(unescape(value.trim())),
             "Exec" => entry.exec = Some(strip_field_codes(&unescape(value.trim()))),
@@ -155,5 +183,48 @@ StartupWMClass=OR2006C2C.exe;
     fn parses_multivalue_categories() {
         let content = "[Desktop Entry]\nName=E\nCategories=Game;Emulator;\n";
         assert_eq!(parse_desktop(content).categories, vec!["Game", "Emulator"]);
+    }
+
+    #[test]
+    fn parses_full_ogm_metadata() {
+        let content = "[Desktop Entry]\nName=SoH\nExec=/run/soh\n\
+            X-OGM-Managed=true\nX-OGM-Category=port\n\
+            X-OGM-GitHub=HarbourMasters/Shipwright\nX-OGM-SGDBQuery=Ship of Harkinian\n";
+        let meta = parse_desktop(content).ogm.unwrap();
+        assert!(meta.managed);
+        assert_eq!(meta.category, Some(Category::Port));
+        assert_eq!(meta.github.as_deref(), Some("HarbourMasters/Shipwright"));
+        assert_eq!(meta.sgdb_query.as_deref(), Some("Ship of Harkinian"));
+    }
+
+    #[test]
+    fn ogm_marker_only() {
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=true\n";
+        let meta = parse_desktop(content).ogm.unwrap();
+        assert!(meta.managed);
+        assert_eq!(meta.category, None);
+        assert!(meta.github.is_none() && meta.sgdb_query.is_none());
+    }
+
+    #[test]
+    fn ogm_managed_requires_exact_true() {
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=yes\n";
+        assert!(!parse_desktop(content).ogm.unwrap().managed);
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed= true \n";
+        assert!(parse_desktop(content).ogm.unwrap().managed);
+    }
+
+    #[test]
+    fn ogm_keys_are_case_insensitive_and_unknown_category_is_none() {
+        let content = "[Desktop Entry]\nName=X\nx-ogm-managed=true\nX-Ogm-Category=bogus\n";
+        let meta = parse_desktop(content).ogm.unwrap();
+        assert!(meta.managed);
+        assert_eq!(meta.category, None);
+    }
+
+    #[test]
+    fn no_ogm_keys_means_none() {
+        let content = "[Desktop Entry]\nName=X\nExec=/run\n";
+        assert!(parse_desktop(content).ogm.is_none());
     }
 }

@@ -84,6 +84,19 @@ ogm doctor                              # paths, keys, catalog/fragment counts
 ~/.cache/ogm/covers/           # downloaded cover art
 ```
 
+## Discovery
+
+`ogm scan` picks up a `.desktop` file from the applications dirs when either:
+
+1. **It carries `X-OGM-Managed=true`** (primary mechanism, rendered by
+   distrobox-gaming). Optional keys refine the entry:
+   `X-OGM-Category` (port|decomp|recomp|fangame|wine|arcade|emulator|tool|custom,
+   default `custom`), `X-OGM-GitHub` (owner/repo), `X-OGM-SGDBQuery`
+   (SteamGridDB search name). X-OGM values override catalog.d fragments and the
+   bundled catalog for the same desktop file.
+2. **Its file stem matches `desktop_globs` in config.toml** (legacy fallback,
+   keeps working unchanged for unmigrated entries).
+
 ## Integration API (catalog.d)
 
 External tools (e.g. distrobox-gaming's `ogm_catalog` role) drop TOML fragments

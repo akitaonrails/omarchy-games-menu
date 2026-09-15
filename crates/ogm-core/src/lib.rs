@@ -9,7 +9,7 @@ pub mod time;
 pub mod version;
 
 pub use catalog::{merge_catalog_entries, CatalogEntry};
-pub use desktop::DesktopEntry;
+pub use desktop::{DesktopEntry, OgmMeta};
 pub use filter::{filter_games, GameFilter};
 pub use model::{Category, CustomGame, Game, GithubInfo, SgdbInfo};
 pub use reconcile::reconcile;

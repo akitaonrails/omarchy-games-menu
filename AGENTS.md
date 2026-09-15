@@ -41,6 +41,10 @@
 - External tools integrate via `~/.config/ogm/catalog.d/*.toml` fragments
   (same `[[game]]` schema as `catalog.toml`) + `ogm scan`. distrobox-gaming's
   `ogm_catalog` role is the reference consumer.
+- Discovery: `.desktop` files with `X-OGM-Managed=true` are primary
+  (`X-OGM-Category`/`X-OGM-GitHub`/`X-OGM-SGDBQuery` override catalog data for
+  that file); the `desktop_globs` stem matching in config.toml is the legacy
+  fallback and must keep working until distrobox-gaming fully migrates.
 
 ## Conventions
 
