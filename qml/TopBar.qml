@@ -20,6 +20,8 @@ ColumnLayout {
   signal sortRequested(string key)
   signal addRequested()
 
+  function focusSearch() { searchField.forceActiveFocus() }
+
   spacing: root.theme ? root.theme.u(10) : 10
 
   RowLayout {
@@ -100,7 +102,7 @@ ColumnLayout {
     Item { Layout.fillWidth: true }
 
     Text {
-      text: "Ctrl+Scroll to zoom"
+      text: "Ctrl+Scroll zoom · type to search · F5 reload · Esc quit"
       color: root.theme ? root.theme.muted : "#8f98a0"
       font.pixelSize: root.theme ? root.theme.fontS : 11
     }

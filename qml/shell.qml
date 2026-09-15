@@ -186,6 +186,39 @@ ShellRoot {
     if (s !== prefs.cover_scale) updatePrefs({ cover_scale: s })
   }
 
+  // Global keys (backdrop has focus; skipped while the add dialog is open).
+  // Printable characters become a search query immediately, no need to click
+  // the search field first; once focused it owns further typing itself.
+  function handleKey(event) {
+    if (addDialog.isOpen) return
+    var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+    if (event.key === Qt.Key_PageUp) { gameGrid.pageUp(); event.accepted = true; return }
+    if (event.key === Qt.Key_PageDown) { gameGrid.pageDown(); event.accepted = true; return }
+    if (event.key === Qt.Key_Home) { gameGrid.scrollHome(); event.accepted = true; return }
+    if (event.key === Qt.Key_End) { gameGrid.scrollEnd(); event.accepted = true; return }
+    if (event.key === Qt.Key_F5 || (ctrl && event.key === Qt.Key_R)) {
+      rescan()
+      event.accepted = true
+      return
+    }
+    if (event.key === Qt.Key_Backspace) {
+      var q0 = String(prefs.query || "")
+      if (q0.length > 0) {
+        updatePrefs({ query: q0.slice(0, -1) })
+        topBar.focusSearch()
+        event.accepted = true
+      }
+      return
+    }
+    if (ctrl || (event.modifiers & Qt.AltModifier) !== 0) return
+    var t = event.text
+    if (t && t >= " ") {
+      updatePrefs({ query: String(prefs.query || "") + t })
+      topBar.focusSearch()
+      event.accepted = true
+    }
+  }
+
   // ---- sorted/filtered model: pure function of state + prefs ----
   // Games, emulators and tools are never mixed: the grid renders one section
   // per group, each internally sorted by the active sort key.
@@ -357,7 +390,25 @@ ShellRoot {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "ogm"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    // Exclusive so key events and Ctrl modifier state actually reach us
+    // (type-to-search, PgUp/PgDn, Ctrl+wheel zoom) and so the compositor's
+    // killactive (Super+W) targets this surface.
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+
+    // Compositor-side close (killactive sends layer-shell `closed`, which
+    // tears down the backing window): quit instead of lingering headless.
+    // Debounced — the visibility flag flickers during surface setup, only a
+    // persistent disappearance means the compositor really closed us.
+    onBackingWindowVisibleChanged: {
+      if (backingWindowVisible) compositorCloseTimer.stop()
+      else compositorCloseTimer.restart()
+    }
+
+    Timer {
+      id: compositorCloseTimer
+      interval: 500
+      onTriggered: if (!win.backingWindowVisible) Qt.quit()
+    }
 
     onScreenChanged: scaleProc.running = true
 
@@ -365,11 +416,18 @@ ShellRoot {
       id: backdrop
       anchors.fill: parent
       color: theme.overlayBg
+      focus: true
 
       Shortcut {
         sequence: "Escape"
         onActivated: addDialog.isOpen ? addDialog.close() : Qt.quit()
       }
+      Shortcut {
+        sequence: "Ctrl+Q"
+        onActivated: Qt.quit()
+      }
+
+      Keys.onPressed: function(event) { root.handleKey(event) }
 
       // Dimmed backdrop: clicks that miss the content close the overlay.
       MouseArea { anchors.fill: parent; onClicked: Qt.quit() }
@@ -380,6 +438,7 @@ ShellRoot {
         spacing: theme.u(16)
 
         TopBar {
+          id: topBar
           Layout.fillWidth: true
           theme: theme
           prefs: root.prefs
@@ -392,6 +451,7 @@ ShellRoot {
         }
 
         GameGrid {
+          id: gameGrid
           Layout.fillWidth: true
           Layout.fillHeight: true
           theme: theme

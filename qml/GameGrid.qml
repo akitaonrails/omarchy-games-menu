@@ -19,6 +19,17 @@ Item {
   signal removeRequested(var game)
   signal copyExecRequested(string exec)
 
+  // Keyboard navigation for the outer Flickable (the section GridViews are
+  // non-interactive; this is the only scroller).
+  function scrollTo(y) {
+    var maxY = Math.max(0, flick.contentHeight - flick.height)
+    flick.contentY = Math.max(0, Math.min(maxY, y))
+  }
+  function pageUp() { scrollTo(flick.contentY - flick.height) }
+  function pageDown() { scrollTo(flick.contentY + flick.height) }
+  function scrollHome() { scrollTo(0) }
+  function scrollEnd() { scrollTo(flick.contentHeight) }
+
   // The one card whose context menu is open, across all sections; null = none.
   property Item menuCard: null
 

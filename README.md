@@ -59,6 +59,12 @@ works; cards fall back to themed placeholders/icons.
   fangames, Wine, arcade), **Emulators**, **Tools** — never mixed; sorting applies
   within each section, and category chips/search narrow the sections down.
 - **Ctrl + scroll** zooms the cover size (persisted to `~/.config/ogm/prefs.json`).
+- **Type anywhere** to filter instantly — no need to click the search field;
+  **Backspace** edits the query.
+- **Page Up / Page Down** scroll a page, **Home / End** jump to top/bottom.
+- **F5** or **Ctrl+R** rescans installed games (`ogm scan`). A scan also runs
+  automatically on every open, and the UI live-reloads whenever `state.json`
+  changes (e.g. distrobox-gaming installing a new game).
 - UI size follows the monitor's Hyprland output scale automatically (detected via
   `hyprctl monitors -j` for the screen the overlay appears on; falls back to 1.0
   off-Hyprland).
@@ -68,7 +74,8 @@ works; cards fall back to themed placeholders/icons.
 - **Right-click** a card for Play / Hide (Remove for custom games) / Copy exec.
 - **+ Add game** opens a dialog (name, exec, category, optional GitHub repo and
   SteamGridDB search name).
-- **Esc** or clicking the dimmed backdrop closes the overlay.
+- **Esc**, **Ctrl+Q**, the compositor's close-window bind (e.g. **Super+W**),
+  or clicking the dimmed backdrop closes the overlay.
 
 ## CLI
 
