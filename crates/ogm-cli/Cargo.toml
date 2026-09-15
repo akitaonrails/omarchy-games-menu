@@ -1,0 +1,20 @@
+[package]
+name = "ogm-cli"
+version = "0.1.0"
+edition.workspace = true
+
+[[bin]]
+name = "ogm"
+path = "src/main.rs"
+
+[dependencies]
+ogm-core = { path = "../ogm-core" }
+ogm-store = { path = "../ogm-store" }
+ogm-net = { path = "../ogm-net" }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Launch the games menu overlay. When run from a repo checkout (qml/ next to
+# this script, e.g. via install.sh's symlink) it uses that qml/ directory;
+# packaged installs fall back to the system path. OGM_QML_DIR always wins.
+SELF="$(readlink -f "$0")"
+DIR="$(dirname "$SELF")"
+if [ -n "${OGM_QML_DIR:-}" ]; then
+  QML_DIR="$OGM_QML_DIR"
+elif [ -d "$DIR/qml" ]; then
+  QML_DIR="$DIR/qml"
+else
+  QML_DIR="/usr/share/omarchy-games-menu/qml"
+fi
+exec quickshell -p "$QML_DIR" "$@"

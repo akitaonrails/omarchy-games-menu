@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "generated_at": "2026-09-13T12:00:00Z",
+  "errors": [],
+  "games": [
+    {
+      "id": "ship-of-harkinian",
+      "name": "Zelda: Ocarina of Time - Ship of Harkinian",
+      "category": "port",
+      "exec": "/usr/bin/distrobox-enter -n gaming -- soh",
+      "icon": "applications-games",
+      "desktop_id": "gaming-ship-of-harkinian",
+      "custom": false,
+      "added_at": "2026-08-01T10:00:00Z",
+      "last_played": "2026-09-10T21:30:00Z",
+      "installed_version": "9.0.5",
+      "github": {
+        "repo": "HarbourMasters/Shipwright",
+        "latest_tag": "9.1.2",
+        "latest_url": "https://github.com/HarbourMasters/Shipwright/releases/tag/9.1.2",
+        "published_at": "2026-09-01T00:00:00Z",
+        "checked_at": "2026-09-13T11:00:00Z",
+        "has_update": true
+      },
+      "sgdb": {
+        "id": 5234567,
+        "release_date": "1998-11-23",
+        "cover": "/home/akitaonrails/.cache/ogm/covers/ship-of-harkinian.jpg",
+        "hero": null
+      }
+    },
+    {
+      "id": "my-indie-fangame",
+      "name": "My Indie Fangame",
+      "category": "custom",
+      "exec": "/usr/local/bin/my-fangame --fullscreen",
+      "icon": "applications-games",
+      "desktop_id": null,
+      "custom": true,
+      "added_at": "2026-09-05T18:45:00Z",
+      "last_played": null,
+      "installed_version": null,
+      "github": null,
+      "sgdb": null
+    },
+    {
+      "id": "sm64coopdx",
+      "name": "Super Mario 64 Coop Deluxe",
+      "category": "port",
+      "exec": "/usr/bin/distrobox-enter -n gaming -- sm64coopdx",
+      "icon": "applications-games",
+      "desktop_id": "gaming-sm64coopdx",
+      "custom": false,
+      "added_at": "2026-07-20T09:00:00Z",
+      "last_played": "2026-09-01T20:00:00Z",
+      "installed_version": "1.3.1",
+      "github": {
+        "repo": "coop-deluxe/sm64coopdx",
+        "latest_tag": "1.3.1",
+        "latest_url": "https://github.com/coop-deluxe/sm64coopdx/releases/tag/v1.3.1",
+        "published_at": "2026-06-15T00:00:00Z",
+        "checked_at": "2026-09-13T11:00:00Z",
+        "has_update": false
+      },
+      "sgdb": null
+    },
+    {
+      "id": "perfect-dark",
+      "name": "Perfect Dark",
+      "category": "decomp",
+      "exec": "/usr/bin/distrobox-enter -n gaming -- perfectdark",
+      "icon": "applications-games",
+      "desktop_id": "gaming-perfect-dark",
+      "custom": false,
+      "added_at": "2026-09-12T08:15:00Z",
+      "last_played": null,
+      "installed_version": null,
+      "github": {
+        "repo": "fgsfdsfgs/perfect_dark",
+        "latest_tag": "0.9.0",
+        "latest_url": "https://github.com/fgsfdsfgs/perfect_dark/releases/tag/0.9.0",
+        "published_at": "2026-08-30T00:00:00Z",
+        "checked_at": "2026-09-13T11:00:00Z",
+        "has_update": false
+      },
+      "sgdb": {
+        "id": 1456789,
+        "release_date": "2000-05-22",
+        "cover": null,
+        "hero": null
+      }
+    }
+  ]
+}

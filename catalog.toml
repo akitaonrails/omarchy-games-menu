@@ -1,0 +1,501 @@
+[[game]]
+id = "2ship2harkinian"
+desktop_id = "gaming-2ship2harkinian"
+name = "Zelda: Majora's Mask - 2Ship2Harkinian"
+category = "port"
+github = "HarbourMasters/2ship2harkinian"
+sgdb_query = "The Legend of Zelda: Majora's Mask"
+
+[[game]]
+id = "7th-heaven"
+desktop_id = "gaming-7th-heaven"
+name = "7th Heaven Mod Manager"
+category = "tool"
+github = "dotaxis/MateriaForge-rs"
+
+[[game]]
+id = "azahar"
+desktop_id = "gaming-azahar"
+name = "Azahar"
+category = "emulator"
+github = "azahar-emu/azahar"
+
+[[game]]
+id = "banjo-recomp"
+desktop_id = "gaming-banjo-recomp"
+name = "Banjo-Kazooie · Recompiled"
+category = "recomp"
+github = "BanjoRecomp/BanjoRecomp"
+sgdb_query = "Banjo-Kazooie"
+
+[[game]]
+id = "cannonball"
+desktop_id = "gaming-cannonball"
+name = "CannonBall - OutRun"
+category = "decomp"
+github = "Endprodukt/cannonball-dx"
+sgdb_query = "OutRun"
+
+[[game]]
+id = "cemu"
+desktop_id = "gaming-cemu"
+name = "Cemu"
+category = "emulator"
+
+[[game]]
+id = "dk64-recomp"
+desktop_id = "gaming-dk64-recomp"
+name = "Donkey Kong 64 · Recompiled"
+category = "recomp"
+github = "Rainchus/Donkey-Kong-64-Recompiled"
+sgdb_query = "Donkey Kong 64"
+
+[[game]]
+id = "dkc1-recomp"
+desktop_id = "gaming-dkc1-recomp"
+name = "Donkey Kong Country · Recomp"
+category = "recomp"
+github = "elliotttate/DKC1Recomp"
+sgdb_query = "Donkey Kong Country"
+
+[[game]]
+id = "dkc2-recomp"
+desktop_id = "gaming-dkc2-recomp"
+name = "Donkey Kong Country 2 · Recomp"
+category = "recomp"
+github = "elliotttate/DKC2Recomp"
+sgdb_query = "Donkey Kong Country 2"
+
+[[game]]
+id = "dkc3-recomp"
+desktop_id = "gaming-dkc3-recomp"
+name = "Donkey Kong Country 3 · Recomp"
+category = "recomp"
+github = "elliotttate/DKC3Recomp"
+sgdb_query = "Donkey Kong Country 3"
+
+[[game]]
+id = "dklr"
+desktop_id = "gaming-dklr"
+name = "Donkey Kong Land Remake"
+category = "fangame"
+sgdb_query = "Donkey Kong Land"
+
+[[game]]
+id = "dolphin"
+desktop_id = "gaming-dolphin"
+name = "Dolphin"
+category = "emulator"
+
+[[game]]
+id = "doom2-ray-traced"
+desktop_id = "gaming-doom2-ray-traced"
+name = "Doom II: Ray Traced"
+category = "port"
+github = "tomboylover93/prboom-plus-rt"
+sgdb_query = "Doom II"
+
+[[game]]
+id = "duckstation"
+desktop_id = "gaming-duckstation"
+name = "DuckStation"
+category = "emulator"
+
+[[game]]
+id = "dude"
+desktop_id = "gaming-dude"
+name = "DOOM 3 · DUDE"
+category = "port"
+github = "Inkub0/dude"
+sgdb_query = "Doom 3"
+
+[[game]]
+id = "dusk"
+desktop_id = "gaming-dusk"
+name = "Dusk - Twilight Princess"
+category = "port"
+github = "TwilitRealm/dusk"
+sgdb_query = "The Legend of Zelda: Twilight Princess"
+
+[[game]]
+id = "eden"
+desktop_id = "gaming-eden"
+name = "Eden"
+category = "emulator"
+
+[[game]]
+id = "eden-cheats-manager"
+desktop_id = "gaming-eden-cheats-manager"
+name = "Eden Cheats Manager"
+category = "tool"
+github = "ChrisA95G/eden-cheats-manager"
+
+[[game]]
+id = "es-de"
+desktop_id = "gaming-es-de"
+name = "ES-DE"
+category = "tool"
+
+[[game]]
+id = "ffvii-7th-heaven"
+desktop_id = "gaming-ffvii-7th-heaven"
+name = "Final Fantasy VII - 7th Heaven"
+category = "tool"
+sgdb_query = "Final Fantasy VII"
+
+[[game]]
+id = "flycast"
+desktop_id = "gaming-flycast"
+name = "Flycast Hi-Res"
+category = "emulator"
+
+[[game]]
+id = "gdiffuser"
+desktop_id = "gaming-gdiffuser"
+name = "G-Diffuser - F-Zero X"
+category = "port"
+github = "Zorkats/G-Diffuser"
+sgdb_query = "F-Zero X"
+
+[[game]]
+id = "goldeneye"
+desktop_id = "gaming-goldeneye"
+name = "GoldenEye 007 · Recompiled"
+category = "recomp"
+github = "cblock85/GoldenEye64Recomp"
+sgdb_query = "GoldenEye 007"
+
+[[game]]
+id = "melonds"
+desktop_id = "gaming-melonds"
+name = "melonDS"
+category = "emulator"
+
+[[game]]
+id = "mmx-regenesis"
+desktop_id = "gaming-mmx-regenesis"
+name = "Mega Man X Regenesis"
+category = "fangame"
+sgdb_query = "Mega Man X"
+
+[[game]]
+id = "mph-recomp"
+desktop_id = "gaming-mph-recomp"
+name = "Metroid Prime Hunters Recomp"
+category = "recomp"
+github = "mstan/MetroidPrimeHuntersRecomp"
+sgdb_query = "Metroid Prime Hunters"
+
+[[game]]
+id = "openbor-sor-troubles-in-japan"
+desktop_id = "gaming-openbor-sor-troubles-in-japan"
+name = "Streets of Rage: Troubles in Japan"
+category = "fangame"
+sgdb_query = "Streets of Rage"
+
+[[game]]
+id = "pcsx2"
+desktop_id = "gaming-pcsx2"
+name = "PCSX2"
+category = "emulator"
+
+[[game]]
+id = "perfect-dark"
+desktop_id = "gaming-perfect-dark"
+name = "Perfect Dark · PC port"
+category = "recomp"
+github = "DabDavis/perfect-dark-dabs-mod"
+sgdb_query = "Perfect Dark"
+
+[[game]]
+id = "project-reignition"
+desktop_id = "gaming-project-reignition"
+name = "Project Reignition"
+category = "fangame"
+sgdb_query = "Sonic and the Secret Rings"
+
+[[game]]
+id = "render96ex"
+desktop_id = "gaming-render96ex"
+name = "Super Mario 64 Render96ex"
+category = "port"
+github = "Render96/Render96ex"
+sgdb_query = "Super Mario 64"
+
+[[game]]
+id = "retroarch"
+desktop_id = "gaming-retroarch"
+name = "RetroArch"
+category = "emulator"
+
+[[game]]
+id = "rpcs3"
+desktop_id = "gaming-rpcs3"
+name = "RPCS3"
+category = "emulator"
+
+[[game]]
+id = "shadps4-gui"
+desktop_id = "gaming-shadps4-gui"
+name = "shadPS4 Manager"
+category = "emulator"
+github = "shadps4-emu/shadPS4"
+
+[[game]]
+id = "ship-of-harkinian"
+desktop_id = "gaming-ship-of-harkinian"
+name = "Zelda: Ocarina of Time - Ship of Harkinian"
+category = "port"
+github = "HarbourMasters/Shipwright"
+sgdb_query = "Ship of Harkinian"
+
+[[game]]
+id = "smb-remastered"
+desktop_id = "gaming-smb-remastered"
+name = "Super Mario Bros. Remastered"
+category = "fangame"
+github = "JHDev2006/Super-Mario-Bros.-Remastered-Public"
+sgdb_query = "Super Mario Bros. Remastered"
+
+[[game]]
+id = "smw-remastered"
+desktop_id = "gaming-smw-remastered"
+name = "Super Mario World Remastered"
+category = "fangame"
+github = "JHDev2006/Super-Mario-World-Remastered-Public"
+sgdb_query = "Super Mario World Remastered"
+
+[[game]]
+id = "sonic2-2013"
+desktop_id = "gaming-sonic2-2013"
+name = "Sonic 2 (2013) + Sonic 2 Mania"
+category = "decomp"
+github = "RSDKModding/RSDKv4-Decompilation"
+sgdb_query = "Sonic the Hedgehog 2"
+
+[[game]]
+id = "sonic3air"
+desktop_id = "gaming-sonic3air"
+name = "Sonic 3 A.I.R."
+category = "fangame"
+github = "Eukaryot/sonic3air"
+sgdb_query = "Sonic 3 A.I.R."
+
+[[game]]
+id = "sonic-p06"
+desktop_id = "gaming-sonic-p06"
+name = "Sonic P-06"
+category = "fangame"
+sgdb_query = "Sonic P-06"
+
+[[game]]
+id = "sonic-sms-remake"
+desktop_id = "gaming-sonic-sms-remake"
+name = "Sonic SMS Remake"
+category = "fangame"
+sgdb_query = "Sonic SMS Remake"
+
+[[game]]
+id = "spaghettikart"
+desktop_id = "gaming-spaghettikart"
+name = "SpaghettiKart - Mario Kart 64"
+category = "port"
+github = "HarbourMasters/SpaghettiKart"
+sgdb_query = "SpaghettiKart"
+
+[[game]]
+id = "starfox-enhanced"
+desktop_id = "gaming-starfox-enhanced"
+name = "Star Fox Enhanced"
+category = "fangame"
+github = "kandowontu/starfox-enhanced"
+sgdb_query = "Star Fox"
+
+[[game]]
+id = "starship"
+desktop_id = "gaming-starship"
+name = "Starship - Star Fox 64"
+category = "port"
+github = "HarbourMasters/Starship"
+sgdb_query = "Starship"
+
+[[game]]
+id = "steam"
+desktop_id = "gaming-steam"
+name = "Steam"
+category = "tool"
+
+[[game]]
+id = "triaevum"
+desktop_id = "gaming-triaevum"
+name = "TriAevum - Ocarina of Time 3D"
+category = "recomp"
+github = "coccofresco/TriAevum"
+sgdb_query = "The Legend of Zelda: Ocarina of Time 3D"
+
+[[game]]
+id = "unleashed-recomp"
+desktop_id = "gaming-unleashed-recomp"
+name = "Unleashed Recompiled"
+category = "recomp"
+github = "hedge-dev/UnleashedRecomp"
+sgdb_query = "Sonic Unleashed"
+
+[[game]]
+id = "waverace-recomp"
+desktop_id = "gaming-waverace-recomp"
+name = "Wave Race 64 · Recompiled"
+category = "recomp"
+github = "elliotttate/wave-race-64-recomp"
+sgdb_query = "Wave Race 64"
+
+[[game]]
+id = "wipeout-pe"
+desktop_id = "gaming-wipeout-pe"
+name = "WipEout Phantom Edition"
+category = "decomp"
+github = "wipeout-phantom-edition/wipeout-phantom-edition"
+sgdb_query = "WipEout"
+
+[[game]]
+id = "xemu"
+desktop_id = "gaming-xemu"
+name = "xemu"
+category = "emulator"
+
+[[game]]
+id = "xenia-manager"
+desktop_id = "gaming-xenia-manager"
+name = "Xenia Manager"
+category = "emulator"
+github = "xenia-manager/xenia-manager"
+
+[[game]]
+id = "colin-mcrae-dirt-2"
+desktop_id = "pc-colin-mcrae-dirt-2"
+name = "Colin McRae: DiRT 2"
+category = "wine"
+sgdb_query = "Colin McRae: DiRT 2"
+
+[[game]]
+id = "colin-mcrae-dirt"
+desktop_id = "pc-colin-mcrae-dirt"
+name = "Colin McRae: DiRT"
+category = "wine"
+sgdb_query = "Colin McRae: DiRT"
+
+[[game]]
+id = "colin-mcrae-rally-04"
+desktop_id = "pc-colin-mcrae-rally-04"
+name = "Colin McRae Rally 04"
+category = "wine"
+sgdb_query = "Colin McRae Rally 04"
+
+[[game]]
+id = "colin-mcrae-rally-1"
+desktop_id = "pc-colin-mcrae-rally-1"
+name = "Colin McRae Rally"
+category = "wine"
+sgdb_query = "Colin McRae Rally"
+
+[[game]]
+id = "colin-mcrae-rally-2"
+desktop_id = "pc-colin-mcrae-rally-2"
+name = "Colin McRae Rally 2.0"
+category = "wine"
+sgdb_query = "Colin McRae Rally 2.0"
+
+[[game]]
+id = "colin-mcrae-rally-3"
+desktop_id = "pc-colin-mcrae-rally-3"
+name = "Colin McRae Rally 3"
+category = "wine"
+sgdb_query = "Colin McRae Rally 3"
+
+[[game]]
+id = "outrun-2006"
+desktop_id = "pc-outrun-2006"
+name = "OutRun 2006: Coast 2 Coast"
+category = "wine"
+sgdb_query = "OutRun 2006: Coast 2 Coast"
+
+[[game]]
+id = "prince-of-persia-sot"
+desktop_id = "pc-prince-of-persia-sot"
+name = "Prince of Persia: The Sands of Time"
+category = "wine"
+sgdb_query = "Prince of Persia: The Sands of Time"
+
+[[game]]
+id = "richard-burns-rally"
+desktop_id = "pc-richard-burns-rally"
+name = "Richard Burns Rally (RSF)"
+category = "wine"
+sgdb_query = "Richard Burns Rally"
+
+[[game]]
+id = "sega-rally-revo"
+desktop_id = "pc-sega-rally-revo"
+name = "Sega Rally Revo"
+category = "wine"
+sgdb_query = "Sega Rally Revo"
+
+[[game]]
+id = "ridge-racer"
+desktop_id = "ridge-racer"
+name = "Ridge Racer Collection"
+category = "wine"
+github = "wanszai/Ridge-Racer-Collection"
+sgdb_query = "Ridge Racer"
+
+[[game]]
+id = "screamer2"
+desktop_id = "screamer2"
+name = "Screamer 2"
+category = "wine"
+sgdb_query = "Screamer 2"
+
+[[game]]
+id = "screamer"
+desktop_id = "screamer"
+name = "Screamer"
+category = "wine"
+sgdb_query = "Screamer"
+
+[[game]]
+id = "screamer-rally"
+desktop_id = "screamer-rally"
+name = "Screamer Rally"
+category = "wine"
+sgdb_query = "Screamer Rally"
+
+[[game]]
+id = "sega-rally-hd"
+desktop_id = "sega-rally-hd"
+name = "Sega Rally Championship HD"
+category = "wine"
+github = "wanszai/Sega-Rally-Championship-PC-Xbox360-Series-X-"
+sgdb_query = "Sega Rally Championship"
+
+[[game]]
+id = "streets-of-rage-remake"
+desktop_id = "streets-of-rage-remake"
+name = "Streets of Rage Remake"
+category = "wine"
+sgdb_query = "Streets of Rage Remake"
+
+[[game]]
+id = "virtua-fighter"
+desktop_id = "virtua-fighter"
+name = "Virtua Fighter"
+category = "wine"
+github = "wanszai/Virtua-Fighter---XboxOne-Windows"
+sgdb_query = "Virtua Fighter"
+
+[[game]]
+id = "virtua-racing"
+desktop_id = "virtua-racing"
+name = "Virtua Racing"
+category = "wine"
+github = "wanszai/Virtua-Racing---XBOXONE-Windows"
+sgdb_query = "Virtua Racing"
