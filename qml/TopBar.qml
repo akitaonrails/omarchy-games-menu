@@ -18,6 +18,7 @@ ColumnLayout {
   signal queryEdited(string q)
   signal categoryToggled(string c)
   signal sortRequested(string key)
+  signal zoomPresetRequested(real scale)
   signal addRequested()
 
   function focusSearch() { searchField.forceActiveFocus() }
@@ -100,6 +101,47 @@ ColumnLayout {
     }
 
     Item { Layout.fillWidth: true }
+
+    // Cover-size presets: a guaranteed zoom path even where Ctrl+wheel is
+    // unavailable. Active when cover_scale matches (within a step).
+    Row {
+      spacing: 4
+      Repeater {
+        model: [
+          { label: "S", scale: 0.7 },
+          { label: "M", scale: 1.0 },
+          { label: "L", scale: 1.5 }
+        ]
+        delegate: Rectangle {
+          id: zoomBtn
+          required property var modelData
+          readonly property bool active:
+            Math.abs((root.prefs.cover_scale || 1) - modelData.scale) < 0.05
+          width: root.theme ? root.theme.u(26) : 26
+          height: root.theme ? root.theme.u(30) : 30
+          radius: 6
+          color: active ? (root.theme ? root.theme.card : "#2a475e") : "transparent"
+          border.width: 1
+          border.color: active
+            ? (root.theme ? root.theme.accent : "#66c0f4")
+            : (root.theme ? root.theme.cardEdge : "#3a5f7e")
+          Text {
+            anchors.centerIn: parent
+            text: zoomBtn.modelData.label
+            color: zoomBtn.active
+              ? (root.theme ? root.theme.accent : "#66c0f4")
+              : (root.theme ? root.theme.muted : "#8f98a0")
+            font.pixelSize: root.theme ? root.theme.fontS : 11
+            font.bold: zoomBtn.active
+          }
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.zoomPresetRequested(zoomBtn.modelData.scale)
+          }
+        }
+      }
+    }
 
     Text {
       text: "Ctrl+Scroll zoom · type to search · F5 reload · Esc quit"

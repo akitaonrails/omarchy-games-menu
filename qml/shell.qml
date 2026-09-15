@@ -447,6 +447,7 @@ ShellRoot {
           onQueryEdited: function(q) { root.updatePrefs({ query: q }) }
           onCategoryToggled: function(c) { root.toggleCategory(c) }
           onSortRequested: function(k) { root.requestSort(k) }
+          onZoomPresetRequested: function(s) { root.updatePrefs({ cover_scale: s }) }
           onAddRequested: addDialog.open()
         }
 

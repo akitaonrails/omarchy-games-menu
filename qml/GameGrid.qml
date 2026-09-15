@@ -48,8 +48,15 @@ Item {
     boundsBehavior: Flickable.StopAtBounds
 
     WheelHandler {
-      acceptedModifiers: Qt.ControlModifier
-      onWheel: function(event) { root.zoomRequested(event.angleDelta.y > 0 ? 0.1 : -0.1) }
+      // Manual modifier check instead of acceptedModifiers: that property
+      // requires an exact modifier match and fails when e.g. a lock key is
+      // active, silently degrading Ctrl+wheel to plain scrolling.
+      onWheel: function(event) {
+        if ((event.modifiers & Qt.ControlModifier) !== 0) {
+          root.zoomRequested(event.angleDelta.y > 0 ? 0.1 : -0.1)
+          event.accepted = true
+        }
+      }
     }
 
     Column {
