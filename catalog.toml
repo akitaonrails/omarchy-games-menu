@@ -317,7 +317,7 @@ desktop_id = "gaming-starship"
 name = "Starship - Star Fox 64"
 category = "port"
 github = "HarbourMasters/Starship"
-sgdb_query = "Starship"
+sgdb_query = "Star Fox 64"
 
 [[game]]
 id = "steam"
@@ -355,7 +355,7 @@ desktop_id = "gaming-wipeout-pe"
 name = "WipEout Phantom Edition"
 category = "decomp"
 github = "wipeout-phantom-edition/wipeout-phantom-edition"
-sgdb_query = "WipEout"
+sgdb_query = "Wipeout"
 
 [[game]]
 id = "xemu"

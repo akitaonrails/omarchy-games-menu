@@ -14,7 +14,8 @@ pub struct SgdbGame {
 
 #[async_trait]
 pub trait ArtworkSource: Send + Sync {
-    async fn search_game(&self, query: &str) -> Result<Option<SgdbGame>, NetError>;
+    /// Candidates ordered exact-name-match first, then autocomplete order.
+    async fn search_games(&self, query: &str) -> Result<Vec<SgdbGame>, NetError>;
     async fn best_grid(&self, game_id: u64) -> Result<Option<String>, NetError>;
     async fn best_hero(&self, game_id: u64) -> Result<Option<String>, NetError>;
     async fn download(&self, url: &str, dest: &std::path::Path) -> Result<(), NetError>;
@@ -52,46 +53,50 @@ impl SgdbClient {
     }
 }
 
-/// Parse /search/autocomplete/{term}; returns the first hit.
-pub fn parse_search_response(body: &str) -> Result<Option<SgdbGame>, NetError> {
+/// Parse /search/autocomplete/{term}; returns all hits, exact
+/// (case-insensitive) name matches for `query` first, autocomplete order
+/// otherwise preserved.
+pub fn parse_search_response(query: &str, body: &str) -> Result<Vec<SgdbGame>, NetError> {
     let v: serde_json::Value =
         serde_json::from_str(body).map_err(|e| NetError::Parse(e.to_string()))?;
     let data = match v.get("data").and_then(|d| d.as_array()) {
         Some(arr) => arr,
-        None => return Ok(None),
+        None => return Ok(Vec::new()),
     };
-    let Some(first) = data.first() else {
-        return Ok(None);
-    };
-    let id = first
-        .get("id")
-        .and_then(|i| i.as_u64())
-        .ok_or_else(|| NetError::Parse("search hit missing id".into()))?;
-    let name = first
-        .get("name")
-        .and_then(|n| n.as_str())
-        .unwrap_or("")
-        .to_string();
-    let release_date = first
-        .get("release_date")
-        .and_then(|d| d.as_i64())
-        .filter(|d| *d > 0)
-        .map(ogm_core::time::epoch_to_date);
-    let types = first
-        .get("types")
-        .and_then(|t| t.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|t| t.as_str().map(|s| s.to_string()))
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok(Some(SgdbGame {
-        id,
-        name,
-        release_date,
-        types,
-    }))
+    let mut games = Vec::new();
+    for hit in data {
+        let Some(id) = hit.get("id").and_then(|i| i.as_u64()) else {
+            continue;
+        };
+        let name = hit
+            .get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or("")
+            .to_string();
+        let release_date = hit
+            .get("release_date")
+            .and_then(|d| d.as_i64())
+            .filter(|d| *d > 0)
+            .map(ogm_core::time::epoch_to_date);
+        let types = hit
+            .get("types")
+            .and_then(|t| t.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|t| t.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        games.push(SgdbGame {
+            id,
+            name,
+            release_date,
+            types,
+        });
+    }
+    let query = query.trim().to_lowercase();
+    games.sort_by_key(|g| if g.name.to_lowercase() == query { 0 } else { 1 });
+    Ok(games)
 }
 
 /// Parse /grids/game/{id} or /heroes/game/{id}; first asset URL wins.
@@ -110,11 +115,11 @@ pub fn parse_asset_response(body: &str) -> Result<Option<String>, NetError> {
 
 #[async_trait]
 impl ArtworkSource for SgdbClient {
-    async fn search_game(&self, query: &str) -> Result<Option<SgdbGame>, NetError> {
+    async fn search_games(&self, query: &str) -> Result<Vec<SgdbGame>, NetError> {
         let body = self
             .get_json(&format!("/search/autocomplete/{query}"))
             .await?;
-        parse_search_response(&body)
+        parse_search_response(query, &body)
     }
 
     async fn best_grid(&self, game_id: u64) -> Result<Option<String>, NetError> {
@@ -179,7 +184,9 @@ mod tests {
 
     #[test]
     fn parses_search_fixture_with_epoch_release_date() {
-        let game = parse_search_response(SEARCH_JSON).unwrap().unwrap();
+        let games = parse_search_response("ocarina of time", SEARCH_JSON).unwrap();
+        assert_eq!(games.len(), 2);
+        let game = &games[0];
         assert_eq!(game.id, 5234567);
         assert_eq!(game.name, "The Legend of Zelda: Ocarina of Time");
         assert_eq!(game.release_date.as_deref(), Some("1998-11-23"));
@@ -187,13 +194,31 @@ mod tests {
     }
 
     #[test]
-    fn empty_search_yields_none() {
-        assert!(parse_search_response(r#"{"success":true,"data":[]}"#)
+    fn exact_name_match_sorts_first() {
+        let body = r#"{"success":true,"data":[
+            {"id": 15166, "name": "Wipeout Omega Collection", "release_date": 1496707200, "types": ["steam"]},
+            {"id": 5296247, "name": "Wipeout", "release_date": 812592000, "types": []}
+        ]}"#;
+        let games = parse_search_response("Wipeout", body).unwrap();
+        assert_eq!(
+            games[0].id, 5296247,
+            "exact match wins over autocomplete order"
+        );
+        assert_eq!(games[1].id, 15166);
+        // no exact match: autocomplete order preserved
+        let games = parse_search_response("wipe", body).unwrap();
+        assert_eq!(games[0].id, 15166);
+    }
+
+    #[test]
+    fn empty_search_yields_no_candidates() {
+        assert!(parse_search_response("x", r#"{"success":true,"data":[]}"#)
             .unwrap()
-            .is_none());
-        assert!(parse_search_response(r#"{"success":false}"#)
+            .is_empty());
+        assert!(parse_search_response("x", r#"{"success":false}"#)
             .unwrap()
-            .is_none());
+            .is_empty());
+        assert!(parse_search_response("x", "not json").is_err());
     }
 
     #[test]

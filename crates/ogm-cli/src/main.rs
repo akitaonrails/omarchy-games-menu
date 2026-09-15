@@ -270,6 +270,57 @@ fn sgdb_queries(catalog: &[CatalogEntry], user: &UserGames) -> HashMap<String, S
     map
 }
 
+/// Walk SGDB search candidates (already ordered exact-match-first) and take
+/// the first one that has a 600x900 grid; if none do, record the first
+/// candidate's metadata without a cover. Bounded to 5 candidates.
+async fn fetch_sgdb_info<S: ArtworkSource + ?Sized>(
+    source: &S,
+    game_id: &str,
+    query: &str,
+    cover: &Path,
+    errors: &mut Vec<String>,
+) -> Option<ogm_core::SgdbInfo> {
+    const MAX_CANDIDATES: usize = 5;
+    let candidates = match source.search_games(query).await {
+        Ok(c) if !c.is_empty() => c,
+        Ok(_) => {
+            errors.push(format!("sgdb {game_id}: no match for {query:?}"));
+            return None;
+        }
+        Err(e) => {
+            errors.push(format!("sgdb {game_id}: {e}"));
+            return None;
+        }
+    };
+    let mut chosen: Option<(ogm_net::SgdbGame, String)> = None;
+    for cand in candidates.iter().take(MAX_CANDIDATES) {
+        match source.best_grid(cand.id).await {
+            Ok(Some(url)) => {
+                chosen = Some((cand.clone(), url));
+                break;
+            }
+            Ok(None) => {}
+            Err(e) => errors.push(format!("sgdb {game_id}: grids for {}: {e}", cand.id)),
+        }
+    }
+    let (hit, cover) = match chosen {
+        Some((hit, url)) => match source.download(&url, cover).await {
+            Ok(()) => (hit, Some(cover.display().to_string())),
+            Err(e) => {
+                errors.push(format!("sgdb {game_id}: download: {e}"));
+                (hit, None)
+            }
+        },
+        None => (candidates[0].clone(), None),
+    };
+    Some(ogm_core::SgdbInfo {
+        id: hit.id,
+        release_date: hit.release_date,
+        cover,
+        hero: None,
+    })
+}
+
 async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
     let config = Config::load(paths).context("loading config.toml")?;
     let user = UserGames::load(paths).context("loading games.json")?;
@@ -326,36 +377,14 @@ async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
                 continue;
             };
             let cover = cover_path(paths, &game.id);
-            if cover.exists() && game.sgdb.is_some() {
+            // skip only when the cover file actually exists; an sgdb block
+            // recorded without a grid is retried on the next refresh
+            if cover.exists() {
                 continue;
             }
-            let result: Result<(u64, Option<String>, Option<String>), String> = async {
-                let hit = sgdb
-                    .search_game(&query)
-                    .await
-                    .map_err(|e| e.to_string())?
-                    .ok_or_else(|| format!("no match for {query:?}"))?;
-                let grid = sgdb.best_grid(hit.id).await.map_err(|e| e.to_string())?;
-                if let Some(url) = grid {
-                    sgdb.download(&url, &cover)
-                        .await
-                        .map_err(|e| e.to_string())?;
-                    Ok((hit.id, hit.release_date, Some(cover.display().to_string())))
-                } else {
-                    Ok((hit.id, hit.release_date, None))
-                }
-            }
-            .await;
-            match result {
-                Ok((id, release_date, cover)) => {
-                    game.sgdb = Some(ogm_core::SgdbInfo {
-                        id,
-                        release_date,
-                        cover,
-                        hero: None,
-                    });
-                }
-                Err(e) => errors.push(format!("sgdb {}: {e}", game.id)),
+            if let Some(info) = fetch_sgdb_info(&sgdb, &game.id, &query, &cover, &mut errors).await
+            {
+                game.sgdb = Some(info);
             }
         }
     }
@@ -680,5 +709,117 @@ mod tests {
             via_marker: false,
         };
         assert!(synthesize_marker_overlay(&[d], &catalog_fixture()).is_empty());
+    }
+
+    struct MockArtwork {
+        games: Vec<ogm_net::SgdbGame>,
+        grids: HashMap<u64, Option<String>>,
+    }
+
+    #[async_trait::async_trait]
+    impl ArtworkSource for MockArtwork {
+        async fn search_games(
+            &self,
+            _query: &str,
+        ) -> Result<Vec<ogm_net::SgdbGame>, ogm_net::NetError> {
+            Ok(self.games.clone())
+        }
+        async fn best_grid(&self, game_id: u64) -> Result<Option<String>, ogm_net::NetError> {
+            Ok(self.grids.get(&game_id).cloned().flatten())
+        }
+        async fn best_hero(&self, _game_id: u64) -> Result<Option<String>, ogm_net::NetError> {
+            Ok(None)
+        }
+        async fn download(&self, _url: &str, dest: &Path) -> Result<(), ogm_net::NetError> {
+            std::fs::write(dest, b"img").unwrap();
+            Ok(())
+        }
+    }
+
+    fn sgdb_game(id: u64, name: &str) -> ogm_net::SgdbGame {
+        ogm_net::SgdbGame {
+            id,
+            name: name.into(),
+            release_date: Some("1995-09-29".into()),
+            types: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn refresh_uses_first_candidate_with_a_grid() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cover = tmp.path().join("wipeout-pe.jpg");
+        let mock = MockArtwork {
+            games: vec![
+                sgdb_game(15166, "Wipeout Omega Collection"),
+                sgdb_game(5296247, "Wipeout"),
+            ],
+            grids: HashMap::from([(15166, None), (5296247, Some("https://cdn/x.jpg".into()))]),
+        };
+        let mut errors = Vec::new();
+        let info = fetch_sgdb_info(&mock, "wipeout-pe", "Wipeout", &cover, &mut errors)
+            .await
+            .unwrap();
+        assert_eq!(
+            info.id, 5296247,
+            "second candidate wins when first has no grid"
+        );
+        assert_eq!(
+            info.cover.as_deref(),
+            Some(cover.display().to_string().as_str())
+        );
+        assert!(cover.exists());
+        assert!(errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn refresh_falls_back_to_first_candidate_without_cover() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cover = tmp.path().join("x.jpg");
+        let mock = MockArtwork {
+            games: vec![sgdb_game(1, "A"), sgdb_game(2, "B")],
+            grids: HashMap::new(),
+        };
+        let mut errors = Vec::new();
+        let info = fetch_sgdb_info(&mock, "x", "q", &cover, &mut errors)
+            .await
+            .unwrap();
+        assert_eq!(info.id, 1);
+        assert!(info.cover.is_none());
+        assert!(!cover.exists());
+    }
+
+    #[tokio::test]
+    async fn refresh_candidate_scan_is_capped_at_five() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cover = tmp.path().join("x.jpg");
+        let games: Vec<_> = (1..=7).map(|i| sgdb_game(i, "G")).collect();
+        let mock = MockArtwork {
+            games,
+            grids: HashMap::from([(7, Some("https://cdn/late.jpg".into()))]),
+        };
+        let mut errors = Vec::new();
+        let info = fetch_sgdb_info(&mock, "x", "q", &cover, &mut errors)
+            .await
+            .unwrap();
+        assert_eq!(info.id, 1, "grid on candidate 6 is never reached");
+        assert!(info.cover.is_none());
+    }
+
+    #[tokio::test]
+    async fn refresh_no_match_records_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mock = MockArtwork {
+            games: vec![],
+            grids: HashMap::new(),
+        };
+        let mut errors = Vec::new();
+        assert!(
+            fetch_sgdb_info(&mock, "x", "qq", &tmp.path().join("c.jpg"), &mut errors)
+                .await
+                .is_none()
+        );
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("no match"));
     }
 }
