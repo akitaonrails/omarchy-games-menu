@@ -28,6 +28,22 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Assemble binary tarball
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          VERSION="${TAG#v}"
+          STAGE="omarchy-games-menu-${VERSION}"
+          mkdir -p "$STAGE"
+          cp target/release/ogm games-menu README.md LICENSE "$STAGE/"
+          cp packaging/omarchy-games-menu.desktop "$STAGE/"
+          cp -r qml "$STAGE/qml"
+          tar -czf "${STAGE}-x86_64.tar.gz" -C "$STAGE" .
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,6 +56,12 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
           fi
+
+      - name: Upload binary tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" "omarchy-games-menu-${TAG#v}-x86_64.tar.gz" --clobber
 
   # GITHUB_TOKEN-created releases don't fire the `release` trigger, so call
   # the AUR workflow explicitly once the release exists.

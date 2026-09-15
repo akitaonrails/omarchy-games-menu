@@ -16,6 +16,15 @@ Two halves:
 
 ## Install
 
+From the AUR (Arch Linux):
+
+```sh
+yay -S omarchy-games-menu-bin   # prebuilt binary (recommended)
+yay -S omarchy-games-menu       # build from source
+```
+
+From a checkout:
+
 ```sh
 ./install.sh        # cargo build --release, symlinks into ~/.local/bin
 ogm scan            # build ~/.local/share/ogm/state.json
