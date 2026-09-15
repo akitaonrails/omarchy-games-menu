@@ -40,3 +40,12 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
           fi
+
+  # GITHUB_TOKEN-created releases don't fire the `release` trigger, so call
+  # the AUR workflow explicitly once the release exists.
+  aur:
+    needs: release
+    uses: ./.github/workflows/aur-publish.yml
+    secrets: inherit
+    with:
+      tag: ${{ github.ref_name }}

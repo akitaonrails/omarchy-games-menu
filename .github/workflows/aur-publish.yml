@@ -3,6 +3,14 @@ name: AUR Publish
 on:
   release:
     types: [published]
+  # Called from release.yml after the GitHub release exists. Needed because a
+  # release created with GITHUB_TOKEN does not fire the `release` trigger.
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -22,7 +30,7 @@ jobs:
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
           else
-            TAG="${{ github.event.inputs.tag }}"
+            TAG="${{ inputs.tag }}"
           fi
           VERSION="${TAG#v}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
