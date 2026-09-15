@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Games Menu
+Comment=Steam-like launcher grid for distrobox-gaming PC ports, recomps and emulators
+Exec=games-menu
+Terminal=false
+Type=Application
+Icon=applications-games
+Categories=Game;
+Keywords=game;games;launcher;emulator;

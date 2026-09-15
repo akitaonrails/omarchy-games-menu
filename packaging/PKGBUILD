@@ -27,6 +27,8 @@ package() {
     cd "${pkgname}-${pkgver}"
     install -Dm755 "target/release/ogm" "${pkgdir}/usr/bin/ogm"
     install -Dm755 "games-menu" "${pkgdir}/usr/bin/games-menu"
+    install -Dm644 "packaging/omarchy-games-menu.desktop" \
+        "${pkgdir}/usr/share/applications/omarchy-games-menu.desktop"
     install -dm755 "${pkgdir}/usr/share/omarchy-games-menu"
     cp -r qml "${pkgdir}/usr/share/omarchy-games-menu/qml"
     install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
