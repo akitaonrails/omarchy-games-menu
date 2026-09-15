@@ -53,7 +53,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install build tooling
-        run: pacman -Syu --noconfirm --needed base-devel git cargo rust namcap
+        # quickshell is the package's only runtime dep; installing it as root
+        # here lets makepkg run as the unprivileged builder without --syncdeps
+        # (sudo in this container has no passwordless path).
+        run: pacman -Syu --noconfirm --needed base-devel git cargo rust namcap quickshell
 
       - name: Build package from local source
         run: |
@@ -72,6 +75,6 @@ jobs:
           sed -i 's|^source=.*|source=("omarchy-games-menu-0.0.0.tar.gz")|' PKGBUILD
           sed -i "s/^sha256sums=.*/sha256sums=('$(sha256sum omarchy-games-menu-0.0.0.tar.gz | awk '{print $1}')')/" PKGBUILD
           chown -R builder:builder "$WORK"
-          sudo -u builder makepkg --noconfirm --syncdeps --clean
+          sudo -u builder makepkg --noconfirm --clean
           namcap PKGBUILD || true
           namcap omarchy-games-menu-0.0.0-1-x86_64.pkg.tar.zst || true
