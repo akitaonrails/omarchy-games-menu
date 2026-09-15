@@ -1,5 +1,7 @@
 # omarchy-games-menu
 
+![omarchy-games-menu overlay](screenshot.jpg)
+
 A Steam-like fullscreen game launcher for the PC ports, recompilations, fangames,
 Wine games and emulators installed by
 [distrobox-gaming](https://github.com/akitaonrails/distrobox-gaming), built for
