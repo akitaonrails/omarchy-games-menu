@@ -331,6 +331,12 @@ async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
     let user = UserGames::load(paths).context("loading games.json")?;
     let mut state = State::load(paths).context("loading state.json")?;
     let (catalog, fragments) = load_full_catalog(paths, &config)?;
+    // Marker metadata (X-OGM-SGDBQuery etc.) lives in desktop files, which
+    // load_full_catalog doesn't read — scan them here too, or games that are
+    // only known via the marker overlay never get cover lookups.
+    let discovered = scan_applications_dirs(&config);
+    let catalog =
+        merge_catalog_entries(&catalog, &synthesize_marker_overlay(&discovered, &catalog));
     let now = now_rfc3339();
     let now_epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
