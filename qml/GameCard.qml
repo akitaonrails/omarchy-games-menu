@@ -18,8 +18,28 @@ Item {
   signal closeMenu()
 
   readonly property var gh: game && game.github ? game.github : null
+  readonly property var wb: game && game.web ? game.web : null
   readonly property var sg: game && game.sgdb ? game.sgdb : null
-  readonly property bool hasUpdate: gh && gh.has_update === true
+  readonly property bool hasUpdate:
+    (gh && gh.has_update === true) || (wb && wb.has_update === true)
+  readonly property string badgeText: {
+    if (root.gh && root.gh.has_update === true)
+      return "↑ v" + (root.gh.latest_tag ? root.gh.latest_tag : "")
+    if (root.wb && root.wb.latest_is_version === true && root.wb.latest)
+      return "↑ " + String(root.wb.latest)
+    return "↑ site"
+  }
+  readonly property string badgeTipText: {
+    if (root.gh && root.gh.has_update === true)
+      return "Update available: " + (root.gh.latest_tag ? root.gh.latest_tag : "")
+        + " (installed " + (root.game && root.game.installed_version ? root.game.installed_version : "?") + ")"
+    var host = ""
+    if (root.wb && root.wb.update_url)
+      host = String(root.wb.update_url).replace(/^https?:\/\//, "").split("/")[0]
+    if (root.wb && root.wb.latest_is_version === true && root.wb.latest)
+      return "Update available: " + String(root.wb.latest) + (host ? " (" + host + ")" : "")
+    return "Download page changed" + (host ? " (" + host + ")" : "")
+  }
   readonly property string coverPath: sg && sg.cover ? String(sg.cover) : ""
   readonly property string versionLine: {
     var inst = game && game.installed_version ? String(game.installed_version) : ""
@@ -81,7 +101,7 @@ Item {
         Text {
           id: badgeLabel
           anchors.centerIn: parent
-          text: "↑ v" + (root.gh && root.gh.latest_tag ? root.gh.latest_tag : "")
+          text: root.badgeText
           color: "#0d1117"
           font.pixelSize: root.theme ? root.theme.fontS : 11
           font.bold: true
@@ -109,8 +129,7 @@ Item {
         Text {
           id: tipLabel
           anchors.centerIn: parent
-          text: "Update available: " + (root.gh && root.gh.latest_tag ? root.gh.latest_tag : "")
-            + " (installed " + (root.game && root.game.installed_version ? root.game.installed_version : "?") + ")"
+          text: root.badgeTipText
           color: root.theme ? root.theme.text : "#c7d5e0"
           font.pixelSize: root.theme ? root.theme.fontS : 11
         }

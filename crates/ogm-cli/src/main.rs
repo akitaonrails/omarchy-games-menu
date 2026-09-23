@@ -6,9 +6,9 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use ogm_core::{
     catalog::CatalogEntry, desktop, glob::matches_any, merge_catalog_entries, model::CustomGame,
-    reconcile, Category,
+    reconcile, Category, WebInfo,
 };
-use ogm_net::{ArtworkSource, GithubClient, ReleasesSource, SgdbClient};
+use ogm_net::{ArtworkSource, GithubClient, PageClient, PageSource, ReleasesSource, SgdbClient};
 use ogm_store::{
     load_catalog_fragments, parse_catalog, read_installed_version, Config, Paths, State, UserGames,
 };
@@ -52,6 +52,12 @@ enum Command {
         sgdb_query: Option<String>,
         #[arg(long)]
         icon: Option<String>,
+        #[arg(long)]
+        web_url: Option<String>,
+        #[arg(long)]
+        update_url: Option<String>,
+        #[arg(long)]
+        update_regex: Option<String>,
     },
     /// Remove a game (custom: delete; catalog: hide)
     Remove { id: String },
@@ -190,6 +196,18 @@ fn synthesize_marker_overlay(
                 .sgdb_query
                 .clone()
                 .or_else(|| base.and_then(|e| e.sgdb_query.clone())),
+            web_url: meta
+                .web_url
+                .clone()
+                .or_else(|| base.and_then(|e| e.web_url.clone())),
+            update_url: meta
+                .update_url
+                .clone()
+                .or_else(|| base.and_then(|e| e.update_url.clone())),
+            update_regex: meta
+                .update_regex
+                .clone()
+                .or_else(|| base.and_then(|e| e.update_regex.clone())),
             version_file: base.and_then(|e| e.version_file.clone()),
             hidden_default: base.map(|e| e.hidden_default).unwrap_or(false),
         });
@@ -400,6 +418,27 @@ async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
         }
     }
 
+    let pages = PageClient::new().context("page client")?;
+    for game in &mut state.games {
+        let Some(web) = &game.web else { continue };
+        let checked = web
+            .checked_at
+            .as_deref()
+            .and_then(ogm_core::time::rfc3339_to_epoch);
+        let stale = checked.map(|c| now_epoch - c > stale_after).unwrap_or(true);
+        if !force && !stale {
+            continue;
+        }
+        check_web_page(
+            &pages,
+            &game.id,
+            game.web.as_mut().expect("checked above"),
+            &now,
+            &mut errors,
+        )
+        .await;
+    }
+
     state.generated_at = now;
     state.errors = errors;
     state.save(paths).context("writing state.json")?;
@@ -411,6 +450,43 @@ async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
     Ok(())
 }
 
+/// Poll one game's update URL: regex extraction when set (a "version"),
+/// content fingerprint otherwise. Errors are collected and prior web
+/// fields are kept, same contract as the sgdb path.
+async fn check_web_page<P: PageSource + ?Sized>(
+    source: &P,
+    game_id: &str,
+    web: &mut WebInfo,
+    now: &str,
+    errors: &mut Vec<String>,
+) {
+    let page = match source.fetch(&web.update_url).await {
+        Ok(p) => p,
+        Err(e) => {
+            errors.push(format!("web {game_id}: {e}"));
+            return;
+        }
+    };
+    let (found, is_version) = match &web.regex {
+        Some(pattern) => match ogm_core::web::extract_version(&page.body, pattern) {
+            Some(v) => (v, true),
+            None => {
+                errors.push(format!("web {game_id}: regex matched nothing"));
+                return;
+            }
+        },
+        None => (
+            ogm_core::web::fingerprint(
+                page.etag.as_deref(),
+                page.last_modified.as_deref(),
+                &page.body,
+            ),
+            false,
+        ),
+    };
+    ogm_core::web::apply_web_check(web, found, is_version, now);
+}
+
 fn run_launch(paths: &Paths, id: &str) -> Result<()> {
     let mut state = State::load(paths).context("loading state.json")?;
     let Some(game) = state.games.iter_mut().find(|g| g.id == id) else {
@@ -419,6 +495,9 @@ fn run_launch(paths: &Paths, id: &str) -> Result<()> {
     let exec = game.exec.clone();
     game.last_played = Some(now_rfc3339());
     game.play_count += 1;
+    if let Some(web) = &mut game.web {
+        web.has_update = false;
+    }
     state.save(paths).context("writing state.json")?;
     std::process::Command::new("setsid")
         .args(["sh", "-c", &exec])
@@ -439,6 +518,9 @@ fn run_add(
     github: Option<&str>,
     sgdb_query: Option<&str>,
     icon: Option<&str>,
+    web_url: Option<&str>,
+    update_url: Option<&str>,
+    update_regex: Option<&str>,
 ) -> Result<String> {
     let mut user = UserGames::load(paths).context("loading games.json")?;
     let state = State::load(paths).context("loading state.json")?;
@@ -466,6 +548,9 @@ fn run_add(
         github: github.map(|s| s.to_string()),
         sgdb_query: sgdb_query.map(|s| s.to_string()),
         icon: icon.map(|s| s.to_string()),
+        web_url: web_url.map(|s| s.to_string()),
+        update_url: update_url.map(|s| s.to_string()),
+        update_regex: update_regex.map(|s| s.to_string()),
     });
     user.save(paths).context("writing games.json")?;
     run_scan(paths)?;
@@ -606,6 +691,9 @@ async fn main() -> Result<()> {
             github,
             sgdb_query,
             icon,
+            web_url,
+            update_url,
+            update_regex,
         } => {
             let id = run_add(
                 &paths,
@@ -615,6 +703,9 @@ async fn main() -> Result<()> {
                 github.as_deref(),
                 sgdb_query.as_deref(),
                 icon.as_deref(),
+                web_url.as_deref(),
+                update_url.as_deref(),
+                update_regex.as_deref(),
             )?;
             println!("{id}");
         }
@@ -667,6 +758,9 @@ mod tests {
             category: Category::Port,
             github: Some("HarbourMasters/Shipwright".into()),
             sgdb_query: Some("Ship of Harkinian".into()),
+            web_url: None,
+            update_url: None,
+            update_regex: None,
             version_file: None,
             hidden_default: false,
         }]
@@ -832,5 +926,176 @@ mod tests {
         );
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("no match"));
+    }
+
+    struct MockPages {
+        pages: HashMap<String, Result<ogm_net::Page, String>>,
+    }
+
+    #[async_trait::async_trait]
+    impl PageSource for MockPages {
+        async fn fetch(&self, url: &str) -> Result<ogm_net::Page, ogm_net::NetError> {
+            match self.pages.get(url) {
+                Some(Ok(p)) => Ok(p.clone()),
+                Some(Err(e)) => Err(ogm_net::NetError::Parse(e.clone())),
+                None => Err(ogm_net::NetError::Parse(format!("no mock for {url}"))),
+            }
+        }
+    }
+
+    fn web_fixture(regex: Option<&str>) -> WebInfo {
+        WebInfo::new(
+            Some("https://example.com/proj".into()),
+            None,
+            regex.map(|s| s.into()),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn web_check_fingerprints_body_and_flags_changes() {
+        let url = "https://example.com/proj";
+        let mut mock = MockPages {
+            pages: HashMap::from([(
+                url.to_string(),
+                Ok(ogm_net::Page {
+                    etag: None,
+                    last_modified: None,
+                    body: "v1".into(),
+                }),
+            )]),
+        };
+        let mut web = web_fixture(None);
+        let mut errors = Vec::new();
+        check_web_page(&mock, "g", &mut web, "T0", &mut errors).await;
+        assert_eq!(web.checked_at.as_deref(), Some("T0"));
+        assert!(!web.has_update && !web.latest_is_version);
+        let baseline = web.latest.clone();
+
+        // same body, new check: no update flagged
+        check_web_page(&mock, "g", &mut web, "T1", &mut errors).await;
+        assert!(!web.has_update);
+
+        // changed body: update flagged
+        mock.pages.insert(
+            url.to_string(),
+            Ok(ogm_net::Page {
+                etag: None,
+                last_modified: None,
+                body: "v2".into(),
+            }),
+        );
+        let mut web = web_fixture(None);
+        web.latest = baseline;
+        check_web_page(&mock, "g", &mut web, "T2", &mut errors).await;
+        assert!(web.has_update);
+        assert!(errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn web_check_prefers_etag_over_body() {
+        let url = "https://example.com/proj";
+        let mock = MockPages {
+            pages: HashMap::from([(
+                url.to_string(),
+                Ok(ogm_net::Page {
+                    etag: Some("\"deadbeef\"".into()),
+                    last_modified: None,
+                    body: "anything".into(),
+                }),
+            )]),
+        };
+        let mut web = web_fixture(None);
+        let mut errors = Vec::new();
+        check_web_page(&mock, "g", &mut web, "T0", &mut errors).await;
+        assert_eq!(web.latest.as_deref(), Some("\"deadbeef\""));
+    }
+
+    #[tokio::test]
+    async fn web_check_extracts_version_with_regex() {
+        let url = "https://example.com/proj";
+        let mock = MockPages {
+            pages: HashMap::from([(
+                url.to_string(),
+                Ok(ogm_net::Page {
+                    etag: None,
+                    last_modified: None,
+                    body: "<h1>Download version 2.4.1 for Linux</h1>".into(),
+                }),
+            )]),
+        };
+        let mut web = web_fixture(Some("version ([0-9.]+)"));
+        let mut errors = Vec::new();
+        check_web_page(&mock, "g", &mut web, "T0", &mut errors).await;
+        assert_eq!(web.latest.as_deref(), Some("2.4.1"));
+        assert!(web.latest_is_version);
+        assert!(!web.has_update);
+    }
+
+    #[tokio::test]
+    async fn web_check_regex_no_match_is_error_and_keeps_prior() {
+        let url = "https://example.com/proj";
+        let mock = MockPages {
+            pages: HashMap::from([(
+                url.to_string(),
+                Ok(ogm_net::Page {
+                    etag: None,
+                    last_modified: None,
+                    body: "nothing here".into(),
+                }),
+            )]),
+        };
+        let mut web = web_fixture(Some("version ([0-9.]+)"));
+        web.latest = Some("1.0.0".into());
+        web.latest_is_version = true;
+        let mut errors = Vec::new();
+        check_web_page(&mock, "g", &mut web, "T0", &mut errors).await;
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("regex matched nothing"));
+        assert_eq!(web.latest.as_deref(), Some("1.0.0"), "prior kept");
+        assert!(
+            web.checked_at.is_none(),
+            "failed check does not touch checked_at"
+        );
+    }
+
+    #[tokio::test]
+    async fn web_check_fetch_error_keeps_prior_fields() {
+        let url = "https://example.com/proj";
+        let mock = MockPages {
+            pages: HashMap::from([(url.to_string(), Err("boom".into()))]),
+        };
+        let mut web = web_fixture(None);
+        web.latest = Some("fp".into());
+        web.has_update = true;
+        web.checked_at = Some("T-old".into());
+        let mut errors = Vec::new();
+        check_web_page(&mock, "g", &mut web, "T0", &mut errors).await;
+        assert_eq!(errors.len(), 1);
+        assert_eq!(web.latest.as_deref(), Some("fp"));
+        assert!(web.has_update);
+        assert_eq!(web.checked_at.as_deref(), Some("T-old"));
+    }
+
+    #[test]
+    fn marker_web_keys_override_catalog() {
+        let d = marked(
+            "gaming-soh",
+            "[Desktop Entry]\nName=SoH\nX-OGM-Managed=true\nX-OGM-WebURL=https://marker.example\nX-OGM-UpdateRegex=v([0-9.]+)\n",
+        );
+        let mut catalog = catalog_fixture();
+        catalog[0].web_url = Some("https://catalog.example".into());
+        catalog[0].update_url = Some("https://catalog.example/dl".into());
+        let overlay = synthesize_marker_overlay(&[d], &catalog);
+        assert_eq!(
+            overlay[0].web_url.as_deref(),
+            Some("https://marker.example")
+        );
+        assert_eq!(
+            overlay[0].update_url.as_deref(),
+            Some("https://catalog.example/dl"),
+            "unset marker key falls back to catalog"
+        );
+        assert_eq!(overlay[0].update_regex.as_deref(), Some("v([0-9.]+)"));
     }
 }

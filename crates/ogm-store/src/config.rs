@@ -155,6 +155,9 @@ name = "Ship of Harkinian"
 category = "port"
 github = "HarbourMasters/Shipwright"
 sgdb_query = "Ship of Harkinian"
+web_url = "https://example.com/soh"
+update_url = "https://example.com/soh/dl"
+update_regex = "version ([0-9.]+)"
 
 [[game]]
 id = "steam"
@@ -168,8 +171,21 @@ category = "tool"
             entries[0].github.as_deref(),
             Some("HarbourMasters/Shipwright")
         );
+        assert_eq!(
+            entries[0].web_url.as_deref(),
+            Some("https://example.com/soh")
+        );
+        assert_eq!(
+            entries[0].update_url.as_deref(),
+            Some("https://example.com/soh/dl")
+        );
+        assert_eq!(
+            entries[0].update_regex.as_deref(),
+            Some("version ([0-9.]+)")
+        );
         assert!(!entries[0].hidden_default);
         assert_eq!(entries[1].category, ogm_core::Category::Tool);
         assert!(entries[1].github.is_none());
+        assert!(entries[1].web_url.is_none() && entries[1].update_url.is_none());
     }
 }

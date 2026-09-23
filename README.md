@@ -110,7 +110,10 @@ ogm doctor                              # paths, keys, catalog/fragment counts
    distrobox-gaming). Optional keys refine the entry:
    `X-OGM-Category` (port|decomp|recomp|fangame|wine|arcade|emulator|tool|custom,
    default `custom`), `X-OGM-GitHub` (owner/repo), `X-OGM-SGDBQuery`
-   (SteamGridDB search name). X-OGM values override catalog.d fragments and the
+   (SteamGridDB search name), `X-OGM-WebURL` (project page),
+   `X-OGM-UpdateURL` (page polled for changes; falls back to WebURL),
+   `X-OGM-UpdateRegex` (capture group 1 = version string; without a group the
+   whole match). X-OGM values override catalog.d fragments and the
    bundled catalog for the same desktop file.
 2. **Its file stem matches `desktop_globs` in config.toml** (legacy fallback,
    keeps working unchanged for unmigrated entries).

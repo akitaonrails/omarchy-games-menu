@@ -1,7 +1,9 @@
 pub mod github;
+pub mod page;
 pub mod sgdb;
 
 pub use github::{GithubClient, Release, ReleaseOutcome, ReleasesSource};
+pub use page::{Page, PageClient, PageSource};
 pub use sgdb::{ArtworkSource, SgdbClient, SgdbGame};
 
 #[derive(Debug, thiserror::Error)]

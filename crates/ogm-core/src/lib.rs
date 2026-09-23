@@ -7,11 +7,12 @@ pub mod reconcile;
 pub mod sort;
 pub mod time;
 pub mod version;
+pub mod web;
 
 pub use catalog::{merge_catalog_entries, CatalogEntry};
 pub use desktop::{DesktopEntry, OgmMeta};
 pub use filter::{filter_games, GameFilter};
-pub use model::{Category, CustomGame, Game, GithubInfo, SgdbInfo};
+pub use model::{Category, CustomGame, Game, GithubInfo, SgdbInfo, WebInfo};
 pub use reconcile::reconcile;
 pub use sort::{sort_games, SortDir, SortKey};
 pub use version::{compare_versions, has_update};

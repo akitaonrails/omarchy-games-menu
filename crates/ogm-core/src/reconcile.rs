@@ -2,7 +2,21 @@ use std::collections::{HashMap, HashSet};
 
 use crate::catalog::CatalogEntry;
 use crate::desktop::DesktopEntry;
-use crate::model::{Category, CustomGame, Game, GithubInfo, DEFAULT_ICON};
+use crate::model::{Category, CustomGame, Game, GithubInfo, WebInfo, DEFAULT_ICON};
+
+/// Skeleton web info from catalog/custom metadata, with polled fields
+/// (latest/checked_at/has_update) carried over from prior state — the same
+/// pattern as `github`, except catalog changes to url/regex do apply.
+fn web_with_prior(skeleton: Option<WebInfo>, prior: Option<&WebInfo>) -> Option<WebInfo> {
+    let mut w = skeleton?;
+    if let Some(p) = prior {
+        w.latest = p.latest.clone();
+        w.latest_is_version = p.latest_is_version;
+        w.checked_at = p.checked_at.clone();
+        w.has_update = p.has_update;
+    }
+    Some(w)
+}
 
 /// Build the game list from discovered desktop entries, the curated
 /// catalog, user customizations and the previous state. Pure: the caller
@@ -29,7 +43,7 @@ pub fn reconcile(
 
     let mut games = Vec::new();
     for (entry, desktop_id) in discovered {
-        let (id, name, category, github) = match catalog_by_desktop.get(desktop_id.as_str()) {
+        let (id, name, category, github, web) = match catalog_by_desktop.get(desktop_id.as_str()) {
             Some(c) => (
                 c.id.clone(),
                 c.name
@@ -38,12 +52,18 @@ pub fn reconcile(
                     .unwrap_or_else(|| desktop_id.clone()),
                 c.category,
                 c.github.clone(),
+                (
+                    c.web_url.clone(),
+                    c.update_url.clone(),
+                    c.update_regex.clone(),
+                ),
             ),
             None => (
                 desktop_id.clone(),
                 entry.name.clone().unwrap_or_else(|| desktop_id.clone()),
                 Category::Custom,
                 None,
+                (None, None, None),
             ),
         };
         let prior = prev.get(id.as_str());
@@ -72,6 +92,10 @@ pub fn reconcile(
                 .and_then(|g| g.github.clone())
                 .or_else(|| github.map(GithubInfo::unchecked)),
             sgdb: prior.and_then(|g| g.sgdb.clone()),
+            web: web_with_prior(
+                WebInfo::new(web.0, web.1, web.2),
+                prior.and_then(|g| g.web.as_ref()),
+            ),
         });
     }
 
@@ -98,6 +122,14 @@ pub fn reconcile(
                 .and_then(|g| g.github.clone())
                 .or_else(|| c.github.clone().map(GithubInfo::unchecked)),
             sgdb: prior.and_then(|g| g.sgdb.clone()),
+            web: web_with_prior(
+                WebInfo::new(
+                    c.web_url.clone(),
+                    c.update_url.clone(),
+                    c.update_regex.clone(),
+                ),
+                prior.and_then(|g| g.web.as_ref()),
+            ),
         });
     }
 
@@ -134,6 +166,9 @@ mod tests {
             category: Category::Port,
             github: Some("owner/repo".into()),
             sgdb_query: Some(id.into()),
+            web_url: None,
+            update_url: None,
+            update_regex: None,
             version_file: None,
             hidden_default: false,
         }
@@ -299,6 +334,9 @@ mod tests {
             github: Some("me/mine".into()),
             sgdb_query: Some("Mine".into()),
             icon: None,
+            web_url: None,
+            update_url: None,
+            update_regex: None,
         }];
         let games = reconcile(
             &[],
@@ -340,6 +378,9 @@ mod tests {
             github: None,
             sgdb_query: None,
             icon: None,
+            web_url: None,
+            update_url: None,
+            update_regex: None,
         }];
         let games = reconcile(
             &[],
@@ -352,5 +393,98 @@ mod tests {
         );
         assert_eq!(games.len(), 1);
         assert_eq!(games[0].name, "SoH");
+    }
+
+    #[test]
+    fn web_skeleton_from_catalog_and_polled_fields_preserved() {
+        let mut e = catalog_entry("soh", "gaming-soh");
+        e.web_url = Some("https://example.com/soh".into());
+        e.update_regex = Some("version ([0-9.]+)".into());
+        let disc = vec![(desktop("SoH", "/run"), "gaming-soh".into())];
+        let games = reconcile(
+            std::slice::from_ref(&e),
+            &disc,
+            &[],
+            &HashSet::new(),
+            &[],
+            &HashMap::new(),
+            "T0",
+        );
+        let web = games[0].web.as_ref().expect("web attached");
+        // no explicit update_url: falls back to web_url
+        assert_eq!(web.update_url, "https://example.com/soh");
+        assert_eq!(web.url.as_deref(), Some("https://example.com/soh"));
+        assert_eq!(web.regex.as_deref(), Some("version ([0-9.]+)"));
+        assert!(web.latest.is_none() && !web.has_update);
+
+        // second scan preserves polled fields, picks up catalog regex change
+        let mut prev = games.clone();
+        {
+            let w = prev[0].web.as_mut().unwrap();
+            w.latest = Some("1.2.3".into());
+            w.latest_is_version = true;
+            w.checked_at = Some("T1".into());
+            w.has_update = true;
+        }
+        let mut e2 = e.clone();
+        e2.update_regex = Some("v([0-9.]+)".into());
+        let games2 = reconcile(
+            std::slice::from_ref(&e2),
+            &disc,
+            &[],
+            &HashSet::new(),
+            &prev,
+            &HashMap::new(),
+            "T9",
+        );
+        let web2 = games2[0].web.as_ref().unwrap();
+        assert_eq!(web2.latest.as_deref(), Some("1.2.3"));
+        assert!(web2.latest_is_version);
+        assert_eq!(web2.checked_at.as_deref(), Some("T1"));
+        assert!(web2.has_update);
+        assert_eq!(web2.regex.as_deref(), Some("v([0-9.]+)"));
+    }
+
+    #[test]
+    fn web_absent_when_no_update_url_known() {
+        let disc = vec![(desktop("SoH", "/run"), "gaming-soh".into())];
+        let games = reconcile(
+            &[catalog_entry("soh", "gaming-soh")],
+            &disc,
+            &[],
+            &HashSet::new(),
+            &[],
+            &HashMap::new(),
+            "T0",
+        );
+        assert!(games[0].web.is_none());
+    }
+
+    #[test]
+    fn custom_game_web_fields_flow_through() {
+        let custom = vec![CustomGame {
+            id: "mine".into(),
+            name: "Mine".into(),
+            exec: "/run/mine".into(),
+            category: Category::Custom,
+            github: None,
+            sgdb_query: None,
+            icon: None,
+            web_url: Some("https://example.com/mine".into()),
+            update_url: Some("https://example.com/mine/changelog".into()),
+            update_regex: None,
+        }];
+        let games = reconcile(
+            &[],
+            &[],
+            &custom,
+            &HashSet::new(),
+            &[],
+            &HashMap::new(),
+            "T0",
+        );
+        let web = games[0].web.as_ref().unwrap();
+        assert_eq!(web.update_url, "https://example.com/mine/changelog");
+        assert_eq!(web.url.as_deref(), Some("https://example.com/mine"));
     }
 }

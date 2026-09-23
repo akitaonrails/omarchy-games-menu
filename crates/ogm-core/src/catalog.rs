@@ -15,6 +15,12 @@ pub struct CatalogEntry {
     #[serde(default)]
     pub sgdb_query: Option<String>,
     #[serde(default)]
+    pub web_url: Option<String>,
+    #[serde(default)]
+    pub update_url: Option<String>,
+    #[serde(default)]
+    pub update_regex: Option<String>,
+    #[serde(default)]
     pub version_file: Option<String>,
     #[serde(default)]
     pub hidden_default: bool,
@@ -50,6 +56,9 @@ mod tests {
             category: Category::Port,
             github: None,
             sgdb_query: None,
+            web_url: None,
+            update_url: None,
+            update_regex: None,
             version_file: None,
             hidden_default: false,
         }
@@ -64,6 +73,9 @@ mod tests {
             category: Category::Custom,
             github: None,
             sgdb_query: None,
+            web_url: None,
+            update_url: None,
+            update_regex: None,
             version_file: None,
             hidden_default: false,
         };

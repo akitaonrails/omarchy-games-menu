@@ -39,6 +39,7 @@ mod tests {
             installed_version: None,
             github: None,
             sgdb: None,
+            web: None,
         }
     }
 

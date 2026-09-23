@@ -137,6 +137,7 @@ mod tests {
                 cover: None,
                 hero: None,
             }),
+            web: None,
         }
     }
 

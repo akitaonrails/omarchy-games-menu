@@ -13,6 +13,9 @@ pub struct OgmMeta {
     pub category: Option<Category>,
     pub github: Option<String>,
     pub sgdb_query: Option<String>,
+    pub web_url: Option<String>,
+    pub update_url: Option<String>,
+    pub update_regex: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -96,6 +99,9 @@ pub fn parse_desktop(content: &str) -> DesktopEntry {
                 "x-ogm-category" => meta.category = Category::from_name(value),
                 "x-ogm-github" => meta.github = Some(value.to_string()),
                 "x-ogm-sgdbquery" => meta.sgdb_query = Some(value.to_string()),
+                "x-ogm-weburl" => meta.web_url = Some(value.to_string()),
+                "x-ogm-updateurl" => meta.update_url = Some(value.to_string()),
+                "x-ogm-updateregex" => meta.update_regex = Some(value.to_string()),
                 _ => {}
             }
             continue;
@@ -231,5 +237,29 @@ StartupWMClass=OR2006C2C.exe;
     fn no_ogm_keys_means_none() {
         let content = "[Desktop Entry]\nName=X\nExec=/run\n";
         assert!(parse_desktop(content).ogm.is_none());
+    }
+
+    #[test]
+    fn parses_ogm_web_keys() {
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=true\n\
+            X-OGM-WebURL=https://example.com/project\n\
+            X-OGM-UpdateURL=https://example.com/downloads\n\
+            X-OGM-UpdateRegex=version ([0-9.]+)\n";
+        let meta = parse_desktop(content).ogm.unwrap();
+        assert_eq!(meta.web_url.as_deref(), Some("https://example.com/project"));
+        assert_eq!(
+            meta.update_url.as_deref(),
+            Some("https://example.com/downloads")
+        );
+        assert_eq!(meta.update_regex.as_deref(), Some("version ([0-9.]+)"));
+    }
+
+    #[test]
+    fn ogm_web_keys_optional_and_case_insensitive() {
+        let content =
+            "[Desktop Entry]\nName=X\nx-ogm-managed=true\nx-OGM-weburl=https://example.com\n";
+        let meta = parse_desktop(content).ogm.unwrap();
+        assert_eq!(meta.web_url.as_deref(), Some("https://example.com"));
+        assert!(meta.update_url.is_none() && meta.update_regex.is_none());
     }
 }

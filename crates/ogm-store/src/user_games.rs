@@ -89,6 +89,9 @@ mod tests {
             github: None,
             sgdb_query: Some("Mine".into()),
             icon: None,
+            web_url: None,
+            update_url: None,
+            update_regex: None,
         });
         user.hide("gaming-steam");
         user.save(&paths).unwrap();

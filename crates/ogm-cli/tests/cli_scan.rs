@@ -197,6 +197,8 @@ fn scan_writes_state_json_against_temp_xdg() {
             "Launcher Probe",
             "--exec",
             &format!("touch {}", root.join("launched").display()),
+            "--web-url",
+            "https://example.com/probe",
         ])
         .output()
         .unwrap()
@@ -248,6 +250,41 @@ fn scan_writes_state_json_against_temp_xdg() {
         .unwrap();
     assert_eq!(probe["play_count"], 2);
 
+    // web skeleton attached from --web-url (update_url falls back to web_url)
+    assert_eq!(
+        probe["web"]["update_url"], "https://example.com/probe",
+        "probe state: {probe}"
+    );
+    assert_eq!(probe["web"]["has_update"], false);
+
+    // a set badge is cleared by launch
+    let mut state: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&state_path).unwrap()).unwrap();
+    for g in state["games"].as_array_mut().unwrap() {
+        if g["id"] == "launcher-probe" {
+            g["web"]["has_update"] = serde_json::Value::Bool(true);
+            g["web"]["latest"] = serde_json::Value::String("fp".into());
+        }
+    }
+    fs::write(&state_path, serde_json::to_string_pretty(&state).unwrap()).unwrap();
+    let out = {
+        let mut cmd = ogm();
+        set_xdg(&mut cmd, root);
+        cmd.args(["launch", "launcher-probe"]).output().unwrap()
+    };
+    assert!(out.status.success());
+    let state: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&state_path).unwrap()).unwrap();
+    let probe = state["games"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["id"] == "launcher-probe")
+        .cloned()
+        .unwrap();
+    assert_eq!(probe["web"]["has_update"], false);
+    assert_eq!(probe["web"]["latest"], "fp", "polled fields preserved");
+
     // X-OGM metadata: marker entry overrides bundled category, keeps catalog github;
     // marker-only file not matching globs is still discovered.
     fs::write(
@@ -260,7 +297,8 @@ fn scan_writes_state_json_against_temp_xdg() {
     fs::write(
         apps.join("zz-marker-game.desktop"),
         "[Desktop Entry]\nName=Marker Only Game\nExec=/bin/true\n\
-         X-OGM-Managed=true\nX-OGM-Category=fangame\nX-OGM-SGDBQuery=Marker Game\n",
+         X-OGM-Managed=true\nX-OGM-Category=fangame\nX-OGM-SGDBQuery=Marker Game\n\
+         X-OGM-WebURL=https://example.com/marker\nX-OGM-UpdateRegex=build ([0-9]+)\n",
     )
     .unwrap();
     let out = {
@@ -287,4 +325,7 @@ fn scan_writes_state_json_against_temp_xdg() {
         .expect("marker-only entry discovered without glob match");
     assert_eq!(marker["category"], "fangame");
     assert_eq!(marker["name"], "Marker Only Game");
+    assert_eq!(marker["web"]["update_url"], "https://example.com/marker");
+    assert_eq!(marker["web"]["regex"], "build ([0-9]+)");
+    assert_eq!(marker["web"]["has_update"], false);
 }

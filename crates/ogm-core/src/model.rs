@@ -85,6 +85,44 @@ pub struct SgdbInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WebInfo {
+    #[serde(default)]
+    pub url: Option<String>,
+    pub update_url: String,
+    #[serde(default)]
+    pub regex: Option<String>,
+    #[serde(default)]
+    pub latest: Option<String>,
+    #[serde(default)]
+    pub latest_is_version: bool,
+    #[serde(default)]
+    pub checked_at: Option<String>,
+    #[serde(default)]
+    pub has_update: bool,
+}
+
+impl WebInfo {
+    /// Skeleton from catalog/marker metadata; `update_url` falls back to
+    /// `url`. None when no pollable URL is known.
+    pub fn new(
+        url: Option<String>,
+        update_url: Option<String>,
+        regex: Option<String>,
+    ) -> Option<Self> {
+        let effective = update_url.or_else(|| url.clone())?;
+        Some(WebInfo {
+            url,
+            update_url: effective,
+            regex,
+            latest: None,
+            latest_is_version: false,
+            checked_at: None,
+            has_update: false,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Game {
     pub id: String,
     pub name: String,
@@ -104,6 +142,8 @@ pub struct Game {
     pub github: Option<GithubInfo>,
     #[serde(default)]
     pub sgdb: Option<SgdbInfo>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web: Option<WebInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -119,6 +159,12 @@ pub struct CustomGame {
     pub sgdb_query: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
+    #[serde(default)]
+    pub web_url: Option<String>,
+    #[serde(default)]
+    pub update_url: Option<String>,
+    #[serde(default)]
+    pub update_regex: Option<String>,
 }
 
 fn default_custom_category() -> Category {
@@ -169,6 +215,15 @@ mod tests {
                 cover: Some("/home/u/.cache/ogm/covers/ship-of-harkinian.jpg".into()),
                 hero: None,
             }),
+            web: Some(WebInfo {
+                url: Some("https://example.com/soh".into()),
+                update_url: "https://example.com/soh/releases".into(),
+                regex: Some("version ([0-9.]+)".into()),
+                latest: Some("9.1.2".into()),
+                latest_is_version: true,
+                checked_at: Some("2026-09-13T12:00:00Z".into()),
+                has_update: false,
+            }),
         };
         let v: serde_json::Value = serde_json::to_value(&game).unwrap();
         assert_eq!(v["category"], "port");
@@ -179,8 +234,24 @@ mod tests {
         assert_eq!(v["github"]["has_update"], false);
         assert_eq!(v["sgdb"]["id"], 5234567);
         assert_eq!(v["sgdb"]["hero"], serde_json::Value::Null);
+        assert_eq!(v["web"]["update_url"], "https://example.com/soh/releases");
+        assert_eq!(v["web"]["latest_is_version"], true);
         let back: Game = serde_json::from_value(v).unwrap();
         assert_eq!(back, game);
+    }
+
+    #[test]
+    fn absent_web_is_omitted_from_json() {
+        let json = r#"{
+            "id":"x","name":"X","category":"custom","exec":"true",
+            "icon":"applications-games","desktop_id":null,"custom":true,
+            "added_at":"2026-01-01T00:00:00Z","last_played":null,
+            "installed_version":null,"github":null,"sgdb":null
+        }"#;
+        let g: Game = serde_json::from_str(json).unwrap();
+        assert!(g.web.is_none());
+        let out = serde_json::to_value(&g).unwrap();
+        assert!(out.get("web").is_none(), "web omitted when None: {out}");
     }
 
     #[test]

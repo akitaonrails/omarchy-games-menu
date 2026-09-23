@@ -45,6 +45,11 @@
   (`X-OGM-Category`/`X-OGM-GitHub`/`X-OGM-SGDBQuery` override catalog data for
   that file); the `desktop_globs` stem matching in config.toml is the legacy
   fallback and must keep working until distrobox-gaming fully migrates.
+- Web-page update checks: `X-OGM-WebURL`/`X-OGM-UpdateURL`/`X-OGM-UpdateRegex`
+  (also on catalog/custom entries) produce `state.json`'s `web` block. First
+  poll is a baseline; `has_update` means "page changed since last launch" and
+  only `ogm launch` clears it. No regex → fingerprint = ETag > Last-Modified >
+  sha256(body); with regex, capture group 1 (else whole match) is the version.
 
 ## Conventions
 
