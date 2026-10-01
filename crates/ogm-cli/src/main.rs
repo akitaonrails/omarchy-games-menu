@@ -275,6 +275,13 @@ fn cover_path(paths: &Paths, id: &str) -> PathBuf {
     paths.covers_dir().join(format!("{id}.jpg"))
 }
 
+fn has_linked_cover(cover: &Path, sgdb: Option<&ogm_core::SgdbInfo>) -> bool {
+    cover.exists()
+        && sgdb
+            .and_then(|info| info.cover.as_deref())
+            .is_some_and(|linked| Path::new(linked) == cover)
+}
+
 fn sgdb_queries(catalog: &[CatalogEntry], user: &UserGames) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for entry in catalog {
@@ -406,9 +413,9 @@ async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
                 continue;
             };
             let cover = cover_path(paths, &game.id);
-            // skip only when the cover file actually exists; an sgdb block
-            // recorded without a grid is retried on the next refresh
-            if cover.exists() {
+            // A file without matching state metadata is orphaned and must be
+            // fetched again so refresh can rebuild the SGDB linkage.
+            if has_linked_cover(&cover, game.sgdb.as_ref()) {
                 continue;
             }
             if let Some(info) = fetch_sgdb_info(&sgdb, &game.id, &query, &cover, &mut errors).await
@@ -814,6 +821,43 @@ mod tests {
             via_marker: false,
         };
         assert!(synthesize_marker_overlay(&[d], &catalog_fixture()).is_empty());
+    }
+
+    fn sgdb_info(cover: Option<String>) -> ogm_core::SgdbInfo {
+        ogm_core::SgdbInfo {
+            id: 1,
+            release_date: None,
+            cover,
+            hero: None,
+        }
+    }
+
+    #[test]
+    fn orphan_cover_file_is_not_considered_linked() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cover = tmp.path().join("game.jpg");
+        std::fs::write(&cover, b"orphan").unwrap();
+
+        assert!(!has_linked_cover(&cover, None));
+        assert!(!has_linked_cover(&cover, Some(&sgdb_info(None))));
+        assert!(!has_linked_cover(
+            &cover,
+            Some(&sgdb_info(Some(
+                tmp.path().join("other.jpg").display().to_string()
+            )))
+        ));
+    }
+
+    #[test]
+    fn existing_cover_linked_from_sgdb_is_considered_complete() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cover = tmp.path().join("game.jpg");
+        std::fs::write(&cover, b"linked").unwrap();
+        let info = sgdb_info(Some(cover.display().to_string()));
+
+        assert!(has_linked_cover(&cover, Some(&info)));
+        std::fs::remove_file(&cover).unwrap();
+        assert!(!has_linked_cover(&cover, Some(&info)));
     }
 
     struct MockArtwork {

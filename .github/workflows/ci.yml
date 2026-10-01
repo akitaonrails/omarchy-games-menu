@@ -56,7 +56,7 @@ jobs:
         # quickshell is the package's only runtime dep; installing it as root
         # here lets makepkg run as the unprivileged builder without --syncdeps
         # (sudo in this container has no passwordless path).
-        run: pacman -Syu --noconfirm --needed base-devel git cargo rust namcap quickshell
+        run: pacman -Syu --noconfirm --needed base-devel git cargo rust cmake namcap quickshell
 
       - name: Build package from local source
         run: |

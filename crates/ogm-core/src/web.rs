@@ -21,7 +21,10 @@ pub fn fingerprint(etag: Option<&str>, last_modified: Option<&str>, body: &str) 
     if let Some(l) = last_modified.map(str::trim).filter(|s| !s.is_empty()) {
         return l.to_string();
     }
-    format!("{:x}", Sha256::digest(body.as_bytes()))
+    Sha256::digest(body.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 /// Record a check result. First successful check is a baseline
@@ -97,8 +100,10 @@ mod tests {
             fingerprint(None, None, "body")
         );
         let fp = fingerprint(None, None, "hello");
-        assert_eq!(fp.len(), 64);
-        assert!(fp.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(
+            fp,
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
         assert_eq!(fp, fingerprint(None, None, "hello"));
         assert_ne!(fp, fingerprint(None, None, "hello2"));
     }
