@@ -57,6 +57,7 @@ ShellRoot {
 
   readonly property bool refreshing: scanProc.running || refreshProc.running
   property bool refreshAfterScan: false
+  property bool refreshDetachFailed: false
 
   Theme { id: theme; coverScale: root.prefs.cover_scale }
 
@@ -325,12 +326,26 @@ ShellRoot {
     onExited: function() {
       if (root.refreshAfterScan) {
         root.refreshAfterScan = false
-        refreshProc.command = root.ogmCmd(["refresh"])
-        refreshProc.running = true
+        root.startRefresh()
       }
     }
   }
-  Process { id: refreshProc }
+  // A plain child Process is killed when the overlay quits, which cut every
+  // cover fetch short for newly added games: scan listed them, then refresh
+  // died before SteamGridDB answered. `setsid -f` puts it in its own session
+  // so it survives and finishes in the background; the backend holds a lock
+  // so overlapping launches can't race it.
+  Process {
+    id: refreshProc
+    onExited: function(exitCode) {
+      // setsid -f returns 0 as soon as it has forked. Non-zero means setsid
+      // itself is unavailable, so fall back to running refresh attached.
+      if (exitCode !== 0 && !root.refreshDetachFailed) {
+        root.refreshDetachFailed = true
+        root.startRefresh()
+      }
+    }
+  }
   Process { id: launchProc; onExited: Qt.quit() }
   Process { id: addProc; onExited: root.rescan() }
   Process { id: removeProc; onExited: root.rescan() }
@@ -346,6 +361,14 @@ ShellRoot {
   // Safety net: quit even if `ogm launch` fails to spawn (backend detaches
   // the game itself, so a quick exit is expected).
   Timer { id: quitTimer; interval: 1500; onTriggered: Qt.quit() }
+
+  function startRefresh() {
+    if (refreshProc.running) return
+    refreshProc.command = refreshDetachFailed
+      ? ogmCmd(["refresh"])
+      : ["setsid", "-f"].concat(ogmCmd(["refresh"]))
+    refreshProc.running = true
+  }
 
   function runRefresh() { refreshAfterScan = true; startScan() }
   function rescan() { refreshAfterScan = false; startScan() }

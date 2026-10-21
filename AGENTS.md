@@ -20,12 +20,13 @@
 
 ## Commands
 
-- `cargo test --workspace` — 72+ tests, no network required.
+- `cargo test --workspace` — 116+ tests, no network required.
 - `cargo clippy --workspace --all-targets --locked -- -D warnings` and
   `cargo fmt --all --check` — both enforced in CI.
-- QML lint: `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml` — the two
-  remaining warnings (`PanelWindow not creatable`, `QProcess::ExitStatus`) are
-  known qmllint false positives shared with the production omarchy shell.
+- QML lint: `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml` — the six
+  remaining `id-shadows-member` warnings (`Theme { id: theme }` vs the `theme`
+  property on GameGrid/GameCard) are known and shared with the production
+  omarchy shell.
 - Local install: `./install.sh` (symlinks into `~/.local/bin`).
 - Preview QML against a fixture: see the header comment in `qml/shell.qml`.
 
@@ -38,6 +39,11 @@
   mirrored in `qml/shell.qml` `frecencyScore` — change both together.
 - UI prefs (`prefs.json`) are owned by the QML side; the backend must never
   write that file. `state.json` is the reverse: backend-owned.
+- `ogm refresh` is spawned detached (`setsid -f`) by the QML side: a plain
+  child Process is killed when the overlay closes, which truncated SGDB cover
+  fetches for newly added games. The backend takes `cache/refresh.lock` so
+  overlapping overlay launches can't race, and saves `state.json` after each
+  cover so a killed refresh keeps its progress instead of orphaning files.
 - External tools integrate via `~/.config/ogm/catalog.d/*.toml` fragments
   (same `[[game]]` schema as `catalog.toml`) + `ogm scan`. distrobox-gaming's
   `ogm_catalog` role is the reference consumer.

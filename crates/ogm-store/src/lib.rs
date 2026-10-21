@@ -1,5 +1,6 @@
 pub mod config;
 pub mod fragments;
+pub mod lock;
 pub mod paths;
 pub mod state;
 pub mod user_games;
@@ -7,6 +8,7 @@ pub mod version_file;
 
 pub use config::{default_desktop_globs, parse_catalog, Config};
 pub use fragments::{load_catalog_fragments, CatalogFragments};
+pub use lock::RefreshLock;
 pub use paths::Paths;
 pub use state::{write_atomic, State};
 pub use user_games::UserGames;

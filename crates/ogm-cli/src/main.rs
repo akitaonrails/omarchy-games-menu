@@ -10,7 +10,8 @@ use ogm_core::{
 };
 use ogm_net::{ArtworkSource, GithubClient, PageClient, PageSource, ReleasesSource, SgdbClient};
 use ogm_store::{
-    load_catalog_fragments, parse_catalog, read_installed_version, Config, Paths, State, UserGames,
+    load_catalog_fragments, parse_catalog, read_installed_version, Config, Paths, RefreshLock,
+    State, UserGames,
 };
 
 const CATALOG_TOML: &str = include_str!("../../../catalog.toml");
@@ -352,6 +353,12 @@ async fn fetch_sgdb_info<S: ArtworkSource + ?Sized>(
 }
 
 async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
+    // The overlay detaches refresh, so two overlay launches can overlap.
+    // Both writing state.json would silently drop the loser's covers.
+    let Some(_lock) = RefreshLock::acquire(paths).context("taking refresh lock")? else {
+        eprintln!("refresh already running; skipping");
+        return Ok(());
+    };
     let config = Config::load(paths).context("loading config.toml")?;
     let user = UserGames::load(paths).context("loading games.json")?;
     let mut state = State::load(paths).context("loading state.json")?;
@@ -408,19 +415,26 @@ async fn run_refresh(paths: &Paths, force: bool) -> Result<()> {
     if !config.sgdb_api_key.is_empty() {
         let sgdb = SgdbClient::new(config.sgdb_api_key.clone()).context("sgdb client")?;
         let queries = sgdb_queries(&catalog, &user);
-        for game in &mut state.games {
-            let Some(query) = queries.get(&game.id).cloned() else {
+        // Indexed so each cover can be flushed to state.json as it lands.
+        for i in 0..state.games.len() {
+            let id = state.games[i].id.clone();
+            let Some(query) = queries.get(&id).cloned() else {
                 continue;
             };
-            let cover = cover_path(paths, &game.id);
+            let cover = cover_path(paths, &id);
             // A file without matching state metadata is orphaned and must be
             // fetched again so refresh can rebuild the SGDB linkage.
-            if has_linked_cover(&cover, game.sgdb.as_ref()) {
+            if has_linked_cover(&cover, state.games[i].sgdb.as_ref()) {
                 continue;
             }
-            if let Some(info) = fetch_sgdb_info(&sgdb, &game.id, &query, &cover, &mut errors).await
-            {
-                game.sgdb = Some(info);
+            if let Some(info) = fetch_sgdb_info(&sgdb, &id, &query, &cover, &mut errors).await {
+                state.games[i].sgdb = Some(info);
+                // Persist per cover: a refresh that dies midway (the overlay
+                // used to kill it on close) keeps the covers it already
+                // fetched instead of orphaning the downloaded files, and the
+                // overlay's state.json watch shows them as they arrive.
+                state.generated_at = now.clone();
+                state.save(paths).context("writing state.json")?;
             }
         }
     }

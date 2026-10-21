@@ -50,6 +50,10 @@ impl Paths {
     pub fn catalog_d_dir(&self) -> PathBuf {
         self.config_dir.join("catalog.d")
     }
+
+    pub fn refresh_lock_file(&self) -> PathBuf {
+        self.cache_dir.join("refresh.lock")
+    }
 }
 
 #[cfg(test)]
@@ -64,6 +68,10 @@ mod tests {
         assert_eq!(p.state_file(), PathBuf::from("/tmp/x/data/state.json"));
         assert_eq!(p.covers_dir(), PathBuf::from("/tmp/x/cache/covers"));
         assert_eq!(p.catalog_d_dir(), PathBuf::from("/tmp/x/config/catalog.d"));
+        assert_eq!(
+            p.refresh_lock_file(),
+            PathBuf::from("/tmp/x/cache/refresh.lock")
+        );
         assert_eq!(p.applications_dir, PathBuf::from("/tmp/x/applications"));
     }
 }
