@@ -10,6 +10,9 @@ Item {
   property Theme theme: null
   property var game: null
   property bool menuOpen: false
+  // Keyboard/controller cursor. Independent of hover so a resting mouse
+  // pointer never looks like the selection.
+  property bool selected: false
 
   signal play()
   signal removeGame()
@@ -50,7 +53,7 @@ Item {
     return ""
   }
 
-  scale: cardMouse.containsMouse && !root.menuOpen ? 1.03 : 1.0
+  scale: (cardMouse.containsMouse || root.selected) && !root.menuOpen ? 1.03 : 1.0
   Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
 
   Column {
@@ -88,6 +91,18 @@ Item {
         smooth: true
         fillMode: Image.PreserveAspectCrop
         visible: status === Image.Ready
+      }
+
+      // Selection ring, drawn over the cover so it reads on art of any
+      // brightness. Above the image, below the update badge.
+      Rectangle {
+        anchors.fill: parent
+        radius: 6
+        visible: root.selected
+        color: "transparent"
+        border.width: Math.max(2, root.theme ? root.theme.u(3) : 3)
+        border.color: root.theme ? root.theme.accent : "#66c0f4"
+        z: 5
       }
 
       Rectangle {

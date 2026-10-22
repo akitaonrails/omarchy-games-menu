@@ -14,6 +14,8 @@ use ogm_store::{
     State, UserGames,
 };
 
+mod gamepad;
+
 const CATALOG_TOML: &str = include_str!("../../../catalog.toml");
 
 #[derive(Parser)]
@@ -72,6 +74,12 @@ enum Command {
     List {
         #[arg(long)]
         json: bool,
+    },
+    /// Stream controller input as line-delimited JSON (used by the overlay)
+    Gamepad {
+        /// List detected joystick devices and exit
+        #[arg(long)]
+        list: bool,
     },
 }
 
@@ -735,6 +743,13 @@ async fn main() -> Result<()> {
         Command::Show { id } => run_hide(&paths, &id, false)?,
         Command::Doctor => run_doctor(&paths)?,
         Command::List { json } => run_list(&paths, json)?,
+        Command::Gamepad { list } => {
+            if list {
+                gamepad::list()?
+            } else {
+                gamepad::run()?
+            }
+        }
     }
     Ok(())
 }

@@ -190,9 +190,26 @@ ShellRoot {
   // Global keys (backdrop has focus; skipped while the add dialog is open).
   // Printable characters become a search query immediately, no need to click
   // the search field first; once focused it owns further typing itself.
+  readonly property var arrowDirs: ({
+    [Qt.Key_Up]: "up", [Qt.Key_Down]: "down",
+    [Qt.Key_Left]: "left", [Qt.Key_Right]: "right"
+  })
+
   function handleKey(event) {
     if (addDialog.isOpen) return
     var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+    var dir = arrowDirs[event.key]
+    if (dir !== undefined) {
+      // Our own ramp replaces Qt's fixed-rate autorepeat.
+      if (!event.isAutoRepeat) pressDir(dir)
+      event.accepted = true
+      return
+    }
+    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+      activateSelection()
+      event.accepted = true
+      return
+    }
     if (event.key === Qt.Key_PageUp) { gameGrid.pageUp(); event.accepted = true; return }
     if (event.key === Qt.Key_PageDown) { gameGrid.pageDown(); event.accepted = true; return }
     if (event.key === Qt.Key_Home) { gameGrid.scrollHome(); event.accepted = true; return }
@@ -317,6 +334,7 @@ ShellRoot {
     command: ["test", "-x", root.home + "/.local/bin/ogm"]
     onExited: function(exitCode) {
       if (exitCode !== 0) root.ogmBin = "ogm"
+      root.startGamepad()
       root.runRefresh()
     }
   }
@@ -361,6 +379,145 @@ ShellRoot {
   // Safety net: quit even if `ogm launch` fails to spawn (backend detaches
   // the game itself, so a quick exit is expected).
   Timer { id: quitTimer; interval: 1500; onTriggered: Qt.quit() }
+
+  // ---- directional repeat with acceleration ----
+  // One engine for arrow keys and controller alike: both feed press/release
+  // edges, so a held direction accelerates identically whichever it came
+  // from. Qt's own key autorepeat is deliberately ignored (it has a fixed
+  // rate and no ramp), which is why arrow keys are tracked press-to-release.
+  property string heldDir: ""
+  property int heldTicks: 0
+
+  // 400ms before the first repeat (so a tap moves exactly one card), then
+  // from ~220ms down to ~45ms over roughly a second of holding.
+  function repeatDelay(tick) {
+    if (tick <= 0) return 400
+    var ramp = Math.min(1.0, (tick - 1) / 10.0)
+    return Math.round(220 - (220 - 45) * ramp)
+  }
+
+  function pressDir(dir) {
+    if (heldDir === dir) return
+    heldDir = dir
+    heldTicks = 0
+    gameGrid.moveSelection(dir)
+    repeatTimer.interval = repeatDelay(0)
+    repeatTimer.restart()
+  }
+  function releaseDir(dir) {
+    if (heldDir !== dir) return
+    releaseAll()
+  }
+  function releaseAll() {
+    heldDir = ""
+    heldTicks = 0
+    repeatTimer.stop()
+  }
+
+  Timer {
+    id: repeatTimer
+    repeat: true
+    onTriggered: {
+      if (root.heldDir === "") { stop(); return }
+      gameGrid.moveSelection(root.heldDir)
+      root.heldTicks += 1
+      interval = root.repeatDelay(root.heldTicks)
+    }
+  }
+
+  // ---- controller ----
+  // `ogm gamepad` streams one JSON edge per line. Deliberately an attached
+  // child: it must die with the overlay, unlike refresh. Started from
+  // ogmProbe once the binary path is settled, like the other processes here
+  // — a `running: true` binding races the `command` one and would launch
+  // with nothing to run.
+  Process {
+    id: padProc
+    // If the reader dies there is no one left to send the release edge, so
+    // drop any held direction rather than repeat it forever.
+    onExited: root.releaseAll()
+    stdout: SplitParser {
+      onRead: function(line) { root.handlePadEvent(line) }
+    }
+  }
+
+  function startGamepad() {
+    if (padProc.running) return
+    padProc.command = ogmCmd(["gamepad"])
+    padProc.running = true
+  }
+
+  function handlePadEvent(line) {
+    if (addDialog.isOpen) return
+    var ev
+    try { ev = JSON.parse(String(line)) } catch (e) { return }
+    if (!ev || !ev.type) return
+    if (ev.type === "dir") {
+      if (ev.pressed) pressDir(String(ev.value))
+      else releaseDir(String(ev.value))
+      return
+    }
+    switch (ev.value) {
+      case "select": activateSelection(); break
+      case "quit": Qt.quit(); break
+      case "next_category": cycleCategory(1); break
+      case "prev_category": cycleCategory(-1); break
+      case "toggle_sort_dir": toggleSortDir(); break
+      case "cycle_sort_key": cycleSortKey(); break
+      case "prev_size": cycleSize(-1); break
+      case "next_size": cycleSize(1); break
+      case "refresh": runRefresh(); break
+    }
+  }
+
+  // LB/RB step through "everything" plus one category at a time. The filter
+  // chips support any combination, but a shoulder button can only express a
+  // single choice, so cycling replaces the selection rather than adding to
+  // it; a multi-chip selection made with the mouse resumes from "all".
+  function cycleCategory(step) {
+    var cats = prefs.categories || []
+    var at = cats.length === 1 ? allCategories.indexOf(cats[0]) + 1 : 0
+    var ring = allCategories.length + 1
+    var next = ((at + step) % ring + ring) % ring
+    updatePrefs({ categories: next === 0 ? [] : [allCategories[next - 1]] })
+  }
+
+  function toggleSortDir() {
+    updatePrefs({ sort_dir: prefs.sort_dir === "asc" ? "desc" : "asc" })
+  }
+
+  // LT/RT step through the same S/M/L presets as the top bar buttons. Picks
+  // the next preset strictly past the current scale rather than the nearest
+  // one, so it still moves exactly one step when Ctrl+wheel has left the
+  // zoom between presets, and simply stops at either end.
+  readonly property var sizePresets: [0.7, 1.0, 1.5]
+  function cycleSize(step) {
+    var cur = prefs.cover_scale || 1.0
+    var eps = 0.01
+    if (step > 0) {
+      for (var i = 0; i < sizePresets.length; i++)
+        if (sizePresets[i] > cur + eps) { updatePrefs({ cover_scale: sizePresets[i] }); return }
+    } else {
+      for (var j = sizePresets.length - 1; j >= 0; j--)
+        if (sizePresets[j] < cur - eps) { updatePrefs({ cover_scale: sizePresets[j] }); return }
+    }
+  }
+
+  // Y walks the sort keys in the order the top bar lists them. Unlike
+  // clicking a sort chip this keeps the current direction, so Y and X are
+  // independent: pick the key, then flip the order.
+  function cycleSortKey() {
+    var at = sortKeys.indexOf(prefs.sort_key)
+    updatePrefs({ sort_key: sortKeys[(at + 1) % sortKeys.length] })
+  }
+
+  // A / Start: launch the highlighted game. With nothing highlighted yet the
+  // button places the cursor instead of launching something unseen.
+  function activateSelection() {
+    var g = gameGrid.selectedGame()
+    if (g) launchGame(g)
+    else gameGrid.ensureSelection()
+  }
 
   function startRefresh() {
     if (refreshProc.running) return
@@ -451,6 +608,13 @@ ShellRoot {
       }
 
       Keys.onPressed: function(event) { root.handleKey(event) }
+      Keys.onReleased: function(event) {
+        var dir = root.arrowDirs[event.key]
+        if (dir !== undefined && !event.isAutoRepeat) {
+          root.releaseDir(dir)
+          event.accepted = true
+        }
+      }
 
       // Dimmed backdrop: clicks that miss the content close the overlay.
       MouseArea { anchors.fill: parent; onClicked: Qt.quit() }

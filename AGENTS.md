@@ -20,7 +20,7 @@
 
 ## Commands
 
-- `cargo test --workspace` — 116+ tests, no network required.
+- `cargo test --workspace` — 146+ tests, no network required.
 - `cargo clippy --workspace --all-targets --locked -- -D warnings` and
   `cargo fmt --all --check` — both enforced in CI.
 - QML lint: `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml` — the six
@@ -39,6 +39,21 @@
   mirrored in `qml/shell.qml` `frecencyScore` — change both together.
 - UI prefs (`prefs.json`) are owned by the QML side; the backend must never
   write that file. `state.json` is the reverse: backend-owned.
+- Controller input: `ogm gamepad` streams one JSON edge per line
+  (`{"type":"dir",...}` / `{"type":"button",...}`) and the overlay parses it
+  with a SplitParser. Devices are found by capability in
+  `/proc/bus/input/devices` (EV_ABS + BTN_SOUTH), never by udev symlink — a
+  ZSA Moonlander exposes `-event-joystick` without being a pad. Buttons are
+  positional per the kernel gamepad spec, so on an Xbox-layout pad BTN_NORTH
+  is Y. Direction *edges* only: the overlay owns key-repeat so the stick,
+  D-pad and arrow keys share one acceleration ramp. A pad that vanishes
+  mid-hold gets an explicit release, or the cursor repeats forever.
+  Bindings: A/Start play · B quit · LB/RB category · X sort direction ·
+  Y sort key · LT/RT cover size · Select refresh (re-fetches any missing
+  cover, same as the `ogm refresh` the overlay runs on open).
+- Processes in `shell.qml` set `command` then `running` imperatively. A
+  declarative `running: true` races the `command` binding and can relaunch
+  the child mid-stream, which silently drops input edges.
 - `ogm refresh` is spawned detached (`setsid -f`) by the QML side: a plain
   child Process is killed when the overlay closes, which truncated SGDB cover
   fetches for newly added games. The backend takes `cache/refresh.lock` so

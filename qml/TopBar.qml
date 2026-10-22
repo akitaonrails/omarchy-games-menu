@@ -144,7 +144,7 @@ ColumnLayout {
     }
 
     Text {
-      text: "Ctrl+Scroll zoom · type to search · F5 reload · Esc quit"
+      text: "Arrows/stick move · Enter/A play · type to search · Ctrl+Scroll zoom · Esc/B quit"
       color: root.theme ? root.theme.muted : "#8f98a0"
       font.pixelSize: root.theme ? root.theme.fontS : 11
     }
