@@ -12,6 +12,7 @@ desktop_id = "gaming-7th-heaven"
 name = "7th Heaven Mod Manager"
 category = "tool"
 github = "dotaxis/MateriaForge-rs"
+sgdb_query = "Final Fantasy VII: 7th Heaven (Mod Manager)"
 
 [[game]]
 id = "azahar"
@@ -19,6 +20,7 @@ desktop_id = "gaming-azahar"
 name = "Azahar"
 category = "emulator"
 github = "azahar-emu/azahar"
+sgdb_query = "Azahar (Emulator)"
 
 [[game]]
 id = "banjo-recomp"
@@ -41,6 +43,7 @@ id = "cemu"
 desktop_id = "gaming-cemu"
 name = "Cemu"
 category = "emulator"
+sgdb_query = "Cemu (Emulator)"
 
 [[game]]
 id = "dk64-recomp"
@@ -86,6 +89,7 @@ id = "dolphin"
 desktop_id = "gaming-dolphin"
 name = "Dolphin"
 category = "emulator"
+sgdb_query = "Dolphin (Emulator)"
 
 [[game]]
 id = "doom2-ray-traced"
@@ -100,6 +104,7 @@ id = "duckstation"
 desktop_id = "gaming-duckstation"
 name = "DuckStation"
 category = "emulator"
+sgdb_query = "DuckStation (Emulator)"
 
 [[game]]
 id = "dude"
@@ -122,6 +127,7 @@ id = "eden"
 desktop_id = "gaming-eden"
 name = "Eden"
 category = "emulator"
+sgdb_query = "Eden (Emulator)"
 
 [[game]]
 id = "eden-cheats-manager"
@@ -129,12 +135,14 @@ desktop_id = "gaming-eden-cheats-manager"
 name = "Eden Cheats Manager"
 category = "tool"
 github = "ChrisA95G/eden-cheats-manager"
+sgdb_query = "Eden (Emulator)"
 
 [[game]]
 id = "es-de"
 desktop_id = "gaming-es-de"
 name = "ES-DE"
 category = "tool"
+sgdb_query = "ES-DE (Program)"
 
 [[game]]
 id = "ffvii-7th-heaven"
@@ -148,6 +156,7 @@ id = "flycast"
 desktop_id = "gaming-flycast"
 name = "Flycast Hi-Res"
 category = "emulator"
+sgdb_query = "flycast (Emulator)"
 
 [[game]]
 id = "gdiffuser"
@@ -170,6 +179,7 @@ id = "melonds"
 desktop_id = "gaming-melonds"
 name = "melonDS"
 category = "emulator"
+sgdb_query = "melonDS (Emulator)"
 
 [[game]]
 id = "mmx-regenesis"
@@ -198,6 +208,7 @@ id = "pcsx2"
 desktop_id = "gaming-pcsx2"
 name = "PCSX2"
 category = "emulator"
+sgdb_query = "PCSX2 (Emulator)"
 
 [[game]]
 id = "perfect-dark"
@@ -227,12 +238,14 @@ id = "retroarch"
 desktop_id = "gaming-retroarch"
 name = "RetroArch"
 category = "emulator"
+sgdb_query = "RetroArch"
 
 [[game]]
 id = "rpcs3"
 desktop_id = "gaming-rpcs3"
 name = "RPCS3"
 category = "emulator"
+sgdb_query = "RPCS3 (Emulator)"
 
 [[game]]
 id = "shadps4-gui"
@@ -240,6 +253,7 @@ desktop_id = "gaming-shadps4-gui"
 name = "shadPS4 Manager"
 category = "emulator"
 github = "shadps4-emu/shadPS4"
+sgdb_query = "shadPS4 (Emulator)"
 
 [[game]]
 id = "ship-of-harkinian"
@@ -362,6 +376,7 @@ id = "xemu"
 desktop_id = "gaming-xemu"
 name = "xemu"
 category = "emulator"
+sgdb_query = "xemu (Emulator)"
 
 [[game]]
 id = "xenia-manager"
@@ -369,6 +384,7 @@ desktop_id = "gaming-xenia-manager"
 name = "Xenia Manager"
 category = "emulator"
 github = "xenia-manager/xenia-manager"
+sgdb_query = "Xenia (Emulator)"
 
 [[game]]
 id = "colin-mcrae-dirt-2"

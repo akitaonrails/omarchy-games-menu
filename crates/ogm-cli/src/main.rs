@@ -778,6 +778,38 @@ mod tests {
         assert!(parse_category("nope").is_err());
     }
 
+    #[test]
+    fn bundled_emulators_have_artwork_queries() {
+        let catalog = parse_catalog(CATALOG_TOML).unwrap();
+        let emulators: Vec<_> = catalog
+            .iter()
+            .filter(|entry| entry.category == Category::Emulator)
+            .collect();
+
+        assert!(!emulators.is_empty());
+        assert!(
+            emulators.iter().all(|entry| entry.sgdb_query.is_some()),
+            "every bundled emulator should resolve to SteamGridDB artwork"
+        );
+    }
+
+    #[test]
+    fn bundled_installed_tools_have_artwork_queries() {
+        let catalog = parse_catalog(CATALOG_TOML).unwrap();
+        for id in [
+            "7th-heaven",
+            "eden-cheats-manager",
+            "es-de",
+            "xenia-manager",
+        ] {
+            let entry = catalog.iter().find(|entry| entry.id == id).unwrap();
+            assert!(
+                entry.sgdb_query.is_some(),
+                "bundled tool {id} should resolve to SteamGridDB artwork"
+            );
+        }
+    }
+
     fn marked(stem: &str, content: &str) -> DiscoveredEntry {
         DiscoveredEntry {
             entry: desktop::parse_desktop(content),

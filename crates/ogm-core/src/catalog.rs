@@ -27,9 +27,10 @@ pub struct CatalogEntry {
 }
 
 /// Merge catalog sources in priority order: earlier sources win position,
-/// later sources win content. An entry from `overlay` replaces an entry
-/// from `base` when their `desktop_id` matches, or (for custom-style
-/// entries without a desktop file) when their `id` matches.
+/// later sources win content. An entry from `overlay` replaces an entry from
+/// `base` when their `desktop_id` matches, or (for custom-style entries without
+/// a desktop file) when their `id` matches. An omitted artwork query inherits
+/// the bundled value so metadata-only fragments do not disable cover fetching.
 pub fn merge_catalog_entries(base: &[CatalogEntry], overlay: &[CatalogEntry]) -> Vec<CatalogEntry> {
     let mut out: Vec<CatalogEntry> = base.to_vec();
     for entry in overlay {
@@ -37,7 +38,13 @@ pub fn merge_catalog_entries(base: &[CatalogEntry], overlay: &[CatalogEntry]) ->
             e.id == entry.id || (entry.desktop_id.is_some() && e.desktop_id == entry.desktop_id)
         });
         match existing {
-            Some(i) => out[i] = entry.clone(),
+            Some(i) => {
+                let mut merged = entry.clone();
+                if merged.sgdb_query.is_none() {
+                    merged.sgdb_query = out[i].sgdb_query.clone();
+                }
+                out[i] = merged;
+            }
             None => out.push(entry.clone()),
         }
     }
@@ -107,6 +114,20 @@ mod tests {
         let merged = merge_catalog_entries(&base, &overlay);
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].name.as_deref(), Some("New Name"));
+    }
+
+    #[test]
+    fn overlay_inherits_only_artwork_query_it_omits() {
+        let mut bundled = entry("dolphin", Some("gaming-dolphin"), Some("Dolphin"));
+        bundled.github = Some("dolphin-emu/dolphin".into());
+        bundled.sgdb_query = Some("Dolphin (Emulator)".into());
+        let fragment = entry("dolphin", Some("gaming-dolphin"), None);
+
+        let merged = merge_catalog_entries(&[bundled], &[fragment]);
+
+        assert!(merged[0].name.is_none());
+        assert!(merged[0].github.is_none());
+        assert_eq!(merged[0].sgdb_query.as_deref(), Some("Dolphin (Emulator)"));
     }
 
     #[test]
