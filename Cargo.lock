@@ -841,6 +841,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror",
+ "toml",
 ]
 
 [[package]]
@@ -850,10 +851,8 @@ dependencies = [
  "async-trait",
  "ogm-core",
  "reqwest",
- "serde",
  "serde_json",
  "thiserror",
- "tokio",
 ]
 
 [[package]]

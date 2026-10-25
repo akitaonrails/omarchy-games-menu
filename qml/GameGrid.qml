@@ -9,7 +9,7 @@ import QtQuick
 Item {
   id: root
 
-  property Theme theme: null
+  required property Theme theme
   property var sections: []
   property int visibleCount: 0
   property int totalGames: 0
@@ -127,7 +127,7 @@ Item {
   // geometry is used rather than a recomputed row position.
   function scrollCardIntoView(card) {
     if (!card) return
-    var pad = theme ? theme.u(12) : 12
+    var pad = theme.u(12)
     var top = card.mapToItem(column, 0, 0).y
     var bottom = top + card.height
     if (top - pad < flick.contentY) scrollTo(top - pad)
@@ -140,7 +140,7 @@ Item {
 
   // Base card 200x300 cover + label block. Scaled by both the user zoom
   // (coverScale) and the output scale (uiScale).
-  readonly property real s: theme ? theme.coverScale * theme.uiScale : 1
+  readonly property real s: theme.coverScale * theme.uiScale
   readonly property int cardW: Math.max(78, Math.round(200 * s))
   readonly property int cardH: Math.max(158, Math.round(384 * s))
   // Cards keep their chosen size; the cell stretches so `columns` of them
@@ -173,7 +173,7 @@ Item {
     Column {
       id: column
       width: flick.width
-      spacing: root.theme ? root.theme.u(28) : 28
+      spacing: root.theme.u(28)
 
       Repeater {
         model: root.sections
@@ -183,22 +183,22 @@ Item {
           required property var modelData
           required property int index
           width: column.width
-          spacing: root.theme ? root.theme.u(12) : 12
+          spacing: root.theme.u(12)
 
           Row {
             spacing: 10
             Text {
               id: sectionTitle
               text: section.modelData.title
-              color: root.theme ? root.theme.text : "#c7d5e0"
-              font.pixelSize: root.theme ? root.theme.fontL : 16
+              color: root.theme.text
+              font.pixelSize: root.theme.fontL
               font.bold: true
             }
             Text {
               anchors.baseline: sectionTitle.baseline
               text: section.modelData.games.length
-              color: root.theme ? root.theme.muted : "#8f98a0"
-              font.pixelSize: root.theme ? root.theme.fontS : 11
+              color: root.theme.muted
+              font.pixelSize: root.theme.fontS
             }
           }
 
@@ -211,8 +211,8 @@ Item {
 
             cellWidth: root.cellW
             cellHeight: root.cellH
-            Behavior on cellWidth { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
-            Behavior on cellHeight { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+            Behavior on cellWidth { NumberAnimation { duration: root.theme.motionFast; easing.type: Easing.OutCubic } }
+            Behavior on cellHeight { NumberAnimation { duration: root.theme.motionFast; easing.type: Easing.OutCubic } }
 
             // The cell is as wide as the width allows; the card keeps its
             // own size and sits centered, so the slack shows up as even
@@ -239,8 +239,8 @@ Item {
                 onPlay: { root.menuCard = null; root.playRequested(card.game) }
                 onRemoveGame: { root.menuCard = null; root.removeRequested(card.game) }
                 onCopyExec: { root.menuCard = null; root.copyExecRequested(String(card.game.exec || "")) }
-                Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
-                Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                Behavior on width { NumberAnimation { duration: root.theme.motionFast; easing.type: Easing.OutCubic } }
+                Behavior on height { NumberAnimation { duration: root.theme.motionFast; easing.type: Easing.OutCubic } }
               }
             }
           }
@@ -255,7 +255,7 @@ Item {
     text: root.totalGames === 0
       ? "No games found — run ogm scan"
       : "No games match your filters"
-    color: root.theme ? root.theme.muted : "#8f98a0"
-    font.pixelSize: root.theme ? root.theme.fontL : 16
+    color: root.theme.muted
+    font.pixelSize: root.theme.fontL
   }
 }

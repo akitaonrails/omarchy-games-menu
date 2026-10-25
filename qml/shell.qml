@@ -32,8 +32,14 @@ ShellRoot {
     var x = Quickshell.env("XDG_CONFIG_HOME")
     return x && x.length ? x : home + "/.config"
   }
+  readonly property string stateHome: {
+    var x = Quickshell.env("XDG_STATE_HOME")
+    return x && x.length ? x : home + "/.local/state"
+  }
   readonly property string statePath: dataHome + "/ogm/state.json"
   readonly property string prefsPath: configHome + "/ogm/prefs.json"
+  readonly property string omarchyCurrent: stateHome + "/omarchy/current"
+  readonly property string omarchyUserShell: configHome + "/omarchy/shell.toml"
 
   // Prefer the canonical install path; fall back to PATH lookup (Process
   // resolves bare names via execvp). Probed once at startup.
@@ -59,7 +65,86 @@ ShellRoot {
   property bool refreshAfterScan: false
   property bool refreshDetachFailed: false
 
-  Theme { id: theme; coverScale: root.prefs.cover_scale }
+  property var appearance: ({})
+  Theme {
+    id: appTheme
+    coverScale: root.prefs.cover_scale
+    appearance: root.appearance
+  }
+
+  // ---- Omarchy appearance: colors, text size and reduced motion ----
+  // Watch both the selected-theme marker and its files: Omarchy atomically
+  // replaces the theme directory on a switch, while edits may update a file.
+  function scheduleAppearanceReload() { appearanceReloadTimer.restart() }
+
+  function startAppearance() {
+    if (appearanceProc.running) {
+      appearanceProc.rerun = true
+      return
+    }
+    appearanceProc.command = ogmCmd(["appearance"])
+    appearanceProc.running = true
+  }
+
+  function applyAppearance(raw) {
+    try {
+      var parsed = JSON.parse(String(raw || ""))
+      if (parsed && typeof parsed === "object") appearance = parsed
+    } catch (e) {
+      console.warn("appearance parse failed:", e)
+    }
+  }
+
+  Timer {
+    id: appearanceReloadTimer
+    interval: 150
+    onTriggered: root.startAppearance()
+  }
+
+  Process {
+    id: appearanceProc
+    property bool rerun: false
+    stdout: StdioCollector {
+      onStreamFinished: root.applyAppearance(this.text)
+    }
+    onExited: {
+      if (rerun) {
+        rerun = false
+        root.startAppearance()
+      }
+    }
+  }
+
+  FileView {
+    path: root.omarchyCurrent + "/theme.name"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.scheduleAppearanceReload()
+  }
+  FileView {
+    path: root.omarchyCurrent + "/theme/colors.toml"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.scheduleAppearanceReload()
+  }
+  FileView {
+    path: root.omarchyCurrent + "/theme/shell.toml"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.scheduleAppearanceReload()
+  }
+  FileView {
+    path: root.omarchyUserShell
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.scheduleAppearanceReload()
+  }
+  FileView {
+    path: root.configHome + "/hypr/looknfeel.lua"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.scheduleAppearanceReload()
+  }
 
   // ---- system scaling: follow the Hyprland output scale ----
   // Layer-shell surfaces render at logical size; without this, fonts/cards
@@ -91,7 +176,7 @@ ShellRoot {
     } catch (e) {
       console.warn("monitor scale detect failed:", e)
     }
-    theme.uiScale = Math.min(3.0, Math.max(1.0, scale))
+    appTheme.uiScale = Math.min(3.0, Math.max(1.0, scale))
   }
 
   // ---- state.json: backend-owned, watched live ----
@@ -219,6 +304,11 @@ ShellRoot {
       event.accepted = true
       return
     }
+    if (ctrl && event.key === Qt.Key_N) {
+      addDialog.open()
+      event.accepted = true
+      return
+    }
     if (event.key === Qt.Key_Backspace) {
       var q0 = String(prefs.query || "")
       if (q0.length > 0) {
@@ -334,6 +424,7 @@ ShellRoot {
     command: ["test", "-x", root.home + "/.local/bin/ogm"]
     onExited: function(exitCode) {
       if (exitCode !== 0) root.ogmBin = "ogm"
+      root.startAppearance()
       root.startGamepad()
       root.runRefresh()
     }
@@ -595,7 +686,7 @@ ShellRoot {
     Rectangle {
       id: backdrop
       anchors.fill: parent
-      color: theme.overlayBg
+      color: appTheme.overlayBg
       focus: true
 
       Shortcut {
@@ -605,6 +696,10 @@ ShellRoot {
       Shortcut {
         sequence: "Ctrl+Q"
         onActivated: Qt.quit()
+      }
+      Shortcut {
+        sequence: "Ctrl+N"
+        onActivated: addDialog.open()
       }
 
       Keys.onPressed: function(event) { root.handleKey(event) }
@@ -620,14 +715,16 @@ ShellRoot {
       MouseArea { anchors.fill: parent; onClicked: Qt.quit() }
 
       ColumnLayout {
+        id: content
         anchors.fill: parent
-        anchors.margins: theme.u(32)
-        spacing: theme.u(16)
+        anchors.margins: appTheme.space4 * 2
+        spacing: appTheme.space4
+        enabled: !addDialog.isOpen
 
         TopBar {
           id: topBar
           Layout.fillWidth: true
-          theme: theme
+          theme: appTheme
           prefs: root.prefs
           categories: root.allCategories
           spinning: root.refreshing
@@ -642,7 +739,7 @@ ShellRoot {
           id: gameGrid
           Layout.fillWidth: true
           Layout.fillHeight: true
-          theme: theme
+          theme: appTheme
           sections: root.visibleSections
           visibleCount: root.visibleCount
           totalGames: root.state && root.state.games ? root.state.games.length : 0
@@ -656,8 +753,9 @@ ShellRoot {
       AddGameDialog {
         id: addDialog
         anchors.fill: parent
-        theme: theme
+        theme: appTheme
         categories: root.allCategories
+        onIsOpenChanged: if (!isOpen) backdrop.forceActiveFocus()
         onSaveRequested: function(args) { root.addGame(args) }
       }
     }

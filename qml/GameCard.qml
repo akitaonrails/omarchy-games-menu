@@ -7,7 +7,7 @@ import QtQuick
 Item {
   id: root
 
-  property Theme theme: null
+  required property Theme theme
   property var game: null
   property bool menuOpen: false
   // Keyboard/controller cursor. Independent of hover so a resting mouse
@@ -52,13 +52,15 @@ Item {
     if (inst) return "installed: " + inst
     return ""
   }
-
-  scale: (cardMouse.containsMouse || root.selected) && !root.menuOpen ? 1.03 : 1.0
-  Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+  Accessible.role: Accessible.ListItem
+  Accessible.name: game && game.name ? game.name : "Game"
+  Accessible.description: versionLine
+  Accessible.selected: selected
+  Accessible.onPressAction: root.play()
 
   Column {
     anchors.fill: parent
-    spacing: root.theme ? root.theme.u(8) : 8
+    spacing: root.theme.u(8)
 
     Item {
       id: coverBox
@@ -69,16 +71,16 @@ Item {
       // permanently for games without a cover.
       Rectangle {
         anchors.fill: parent
-        radius: 6
+        radius: root.theme.radius
         gradient: Gradient {
-          GradientStop { position: 0.0; color: root.theme ? root.theme.card : "#2a475e" }
-          GradientStop { position: 1.0; color: root.theme ? root.theme.bg : "#1b2838" }
+          GradientStop { position: 0.0; color: root.theme.card }
+          GradientStop { position: 1.0; color: root.theme.bg }
         }
         Text {
           anchors.centerIn: parent
           text: root.game && root.game.name ? String(root.game.name).charAt(0).toUpperCase() : "?"
-          color: root.theme ? root.theme.muted : "#8f98a0"
-          font.pixelSize: root.theme ? root.theme.fontHero : 64
+          color: root.theme.muted
+          font.pixelSize: root.theme.fontHero
           font.bold: true
         }
       }
@@ -97,28 +99,30 @@ Item {
       // brightness. Above the image, below the update badge.
       Rectangle {
         anchors.fill: parent
-        radius: 6
-        visible: root.selected
+        radius: root.theme.radius
+        visible: root.selected || cardMouse.containsMouse
         color: "transparent"
-        border.width: Math.max(2, root.theme ? root.theme.u(3) : 3)
-        border.color: root.theme ? root.theme.accent : "#66c0f4"
+        border.width: root.selected
+          ? root.theme.focusWidth : root.theme.borderWidth
+        border.color: root.selected
+          ? root.theme.accent : root.theme.cardEdge
         z: 5
       }
 
       Rectangle {
         id: badge
         visible: root.hasUpdate
-        anchors { top: parent.top; right: parent.right; margins: root.theme ? root.theme.u(8) : 8 }
+        anchors { top: parent.top; right: parent.right; margins: root.theme.u(8) }
         width: badgeLabel.implicitWidth + 14
         height: badgeLabel.implicitHeight + 8
         radius: height / 2
-        color: root.theme ? root.theme.update : "#f0a232"
+        color: root.theme.update
         Text {
           id: badgeLabel
           anchors.centerIn: parent
           text: root.badgeText
-          color: "#0d1117"
-          font.pixelSize: root.theme ? root.theme.fontS : 11
+          color: root.theme.bg
+          font.pixelSize: root.theme.fontS
           font.bold: true
         }
         // Hover-only; clicks fall through to the card MouseArea.
@@ -136,17 +140,17 @@ Item {
         anchors { top: badge.bottom; right: badge.right; topMargin: 4 }
         width: tipLabel.implicitWidth + 14
         height: tipLabel.implicitHeight + 8
-        radius: 4
-        color: "#0d1117"
-        border.width: 1
-        border.color: root.theme ? root.theme.update : "#f0a232"
+        radius: root.theme.radius
+        color: root.theme.bg
+        border.width: root.theme.borderWidth
+        border.color: root.theme.update
         z: 10
         Text {
           id: tipLabel
           anchors.centerIn: parent
           text: root.badgeTipText
-          color: root.theme ? root.theme.text : "#c7d5e0"
-          font.pixelSize: root.theme ? root.theme.fontS : 11
+          color: root.theme.text
+          font.pixelSize: root.theme.fontS
         }
       }
     }
@@ -154,8 +158,8 @@ Item {
     Text {
       width: parent.width
       text: root.game && root.game.name ? root.game.name : ""
-      color: root.theme ? root.theme.text : "#c7d5e0"
-      font.pixelSize: root.theme ? root.theme.fontM : 13
+      color: root.theme.text
+      font.pixelSize: root.theme.fontM
       elide: Text.ElideRight
       wrapMode: Text.WordWrap
       maximumLineCount: 2
@@ -167,14 +171,14 @@ Item {
       height: catLabel.implicitHeight + 6
       radius: height / 2
       color: "transparent"
-      border.width: 1
-      border.color: root.theme ? root.theme.muted : "#8f98a0"
+      border.width: root.theme.borderWidth
+      border.color: root.theme.muted
       Text {
         id: catLabel
         anchors.centerIn: parent
         text: root.game && root.game.category ? root.game.category : ""
-        color: root.theme ? root.theme.muted : "#8f98a0"
-        font.pixelSize: root.theme ? root.theme.fontS : 11
+        color: root.theme.muted
+        font.pixelSize: root.theme.fontS
       }
     }
 
@@ -182,8 +186,8 @@ Item {
       visible: root.versionLine !== ""
       width: parent.width
       text: root.versionLine
-      color: root.theme ? root.theme.muted : "#8f98a0"
-      font.pixelSize: root.theme ? root.theme.fontS : 11
+      color: root.theme.muted
+      font.pixelSize: root.theme.fontS
       elide: Text.ElideRight
     }
   }
@@ -210,13 +214,13 @@ Item {
     id: menu
     visible: root.menuOpen
     z: 20
-    anchors { right: parent.right; top: parent.top; margins: root.theme ? root.theme.u(6) : 6 }
-    width: root.theme ? root.theme.u(150) : 150
+    anchors { right: parent.right; top: parent.top; margins: root.theme.u(6) }
+    width: root.theme.u(150)
     height: menuCol.height + 8
-    radius: 6
-    color: "#10161f"
-    border.width: 1
-    border.color: root.theme ? root.theme.cardEdge : "#3a5f7e"
+    radius: root.theme.radius
+    color: root.theme.bg
+    border.width: root.theme.borderWidth
+    border.color: root.theme.cardEdge
     Column {
       id: menuCol
       anchors { left: parent.left; right: parent.right; top: parent.top; margins: 4 }
@@ -230,14 +234,16 @@ Item {
           id: menuItem
           required property var modelData
           width: menuCol.width
-          height: root.theme ? root.theme.u(28) : 28
-          radius: 4
-          color: itemMouse.containsMouse ? (root.theme ? root.theme.card : "#2a475e") : "transparent"
+          height: root.theme.u(28)
+          radius: root.theme.radius
+          Accessible.role: Accessible.MenuItem
+          Accessible.name: modelData.label
+          color: itemMouse.containsMouse ? root.theme.card : "transparent"
           Text {
             anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 8 }
             text: menuItem.modelData.label
-            color: root.theme ? root.theme.text : "#c7d5e0"
-            font.pixelSize: root.theme ? root.theme.fontS : 11
+            color: root.theme.text
+            font.pixelSize: root.theme.fontS
           }
           MouseArea {
             id: itemMouse

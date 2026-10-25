@@ -10,7 +10,7 @@ import QtQuick.Controls
 ColumnLayout {
   id: root
 
-  property Theme theme: null
+  required property Theme theme
   property var prefs: ({})
   property var categories: []
   property bool spinning: false
@@ -23,33 +23,35 @@ ColumnLayout {
 
   function focusSearch() { searchField.forceActiveFocus() }
 
-  spacing: root.theme ? root.theme.u(10) : 10
+  spacing: root.theme.space2
 
   RowLayout {
     Layout.fillWidth: true
-    spacing: root.theme ? root.theme.u(12) : 12
+    spacing: root.theme.space3
 
     TextField {
       id: searchField
-      Layout.preferredWidth: root.theme ? root.theme.u(280) : 280
+      Layout.preferredWidth: root.theme.u(280)
       text: root.prefs.query || ""
       placeholderText: "Search games…"
-      color: root.theme ? root.theme.text : "#c7d5e0"
-      placeholderTextColor: root.theme ? root.theme.muted : "#8f98a0"
-      font.pixelSize: root.theme ? root.theme.fontM : 13
+      Accessible.name: "Search games"
+      color: root.theme.text
+      placeholderTextColor: root.theme.muted
+      font.pixelSize: root.theme.fontM
       onTextEdited: root.queryEdited(text)
       background: Rectangle {
-        radius: 6
-        color: root.theme ? root.theme.card : "#2a475e"
-        border.width: 1
+        radius: root.theme.radius
+        color: root.theme.card
+        border.width: searchField.activeFocus
+          ? root.theme.focusWidth : root.theme.borderWidth
         border.color: searchField.activeFocus
-          ? (root.theme ? root.theme.accent : "#66c0f4") : "transparent"
+          ? root.theme.accent : root.theme.cardEdge
       }
     }
 
     // Sort: clicking the active key toggles asc/desc.
     Row {
-      spacing: 6
+      spacing: root.theme.space1
       Repeater {
         model: [
           { key: "most_played", label: "Most played" },
@@ -61,28 +63,36 @@ ColumnLayout {
           id: sortBtn
           required property var modelData
           readonly property bool active: root.prefs.sort_key === modelData.key
-          width: sortLabel.implicitWidth + (root.theme ? root.theme.u(20) : 20)
-          height: root.theme ? root.theme.u(30) : 30
-          radius: 6
-          color: active ? (root.theme ? root.theme.card : "#2a475e") : "transparent"
-          border.width: 1
-          border.color: active
-            ? (root.theme ? root.theme.accent : "#66c0f4")
-            : (root.theme ? root.theme.cardEdge : "#3a5f7e")
+          function activate() { root.sortRequested(modelData.key) }
+          width: sortLabel.implicitWidth + root.theme.u(20)
+          height: root.theme.controlHeight
+          radius: root.theme.radius
+          activeFocusOnTab: true
+          Accessible.role: Accessible.Button
+          Accessible.name: "Sort by " + modelData.label
+          Accessible.selected: active
+          Accessible.onPressAction: sortBtn.activate()
+          Keys.onReturnPressed: sortBtn.activate()
+          Keys.onEnterPressed: sortBtn.activate()
+          Keys.onSpacePressed: sortBtn.activate()
+          color: active ? root.theme.card : "transparent"
+          border.width: activeFocus
+            ? root.theme.focusWidth : root.theme.borderWidth
+          border.color: active || activeFocus
+            ? root.theme.accent : root.theme.cardEdge
           Text {
             id: sortLabel
             anchors.centerIn: parent
             text: sortBtn.modelData.label + (sortBtn.active
               ? (root.prefs.sort_dir === "asc" ? " ▲" : " ▼") : "")
             color: sortBtn.active
-              ? (root.theme ? root.theme.accent : "#66c0f4")
-              : (root.theme ? root.theme.muted : "#8f98a0")
-            font.pixelSize: root.theme ? root.theme.fontS : 11
+              ? root.theme.accent : root.theme.muted
+            font.pixelSize: root.theme.fontS
           }
           MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.sortRequested(sortBtn.modelData.key)
+            onClicked: sortBtn.activate()
           }
         }
       }
@@ -91,11 +101,11 @@ ColumnLayout {
     Text {
       visible: root.spinning
       text: "⟳"
-      color: root.theme ? root.theme.accent : "#66c0f4"
-      font.pixelSize: root.theme ? root.theme.fontL : 16
+      color: root.theme.accent
+      font.pixelSize: root.theme.fontL
       RotationAnimator on rotation {
-        running: root.spinning
-        from: 0; to: 360; duration: 1000
+        running: root.spinning && !root.theme.reducedMotion
+        from: 0; to: 360; duration: root.theme.motionCycle
         loops: Animation.Infinite
       }
     }
@@ -105,7 +115,7 @@ ColumnLayout {
     // Cover-size presets: a guaranteed zoom path even where Ctrl+wheel is
     // unavailable. Active when cover_scale matches (within a step).
     Row {
-      spacing: 4
+      spacing: root.theme.space1
       Repeater {
         model: [
           { label: "S", scale: 0.7 },
@@ -117,52 +127,70 @@ ColumnLayout {
           required property var modelData
           readonly property bool active:
             Math.abs((root.prefs.cover_scale || 1) - modelData.scale) < 0.05
-          width: root.theme ? root.theme.u(26) : 26
-          height: root.theme ? root.theme.u(30) : 30
-          radius: 6
-          color: active ? (root.theme ? root.theme.card : "#2a475e") : "transparent"
-          border.width: 1
-          border.color: active
-            ? (root.theme ? root.theme.accent : "#66c0f4")
-            : (root.theme ? root.theme.cardEdge : "#3a5f7e")
+          function activate() { root.zoomPresetRequested(modelData.scale) }
+          width: root.theme.u(26)
+          height: root.theme.controlHeight
+          radius: root.theme.radius
+          activeFocusOnTab: true
+          Accessible.role: Accessible.Button
+          Accessible.name: "Cover size " + modelData.label
+          Accessible.selected: active
+          Accessible.onPressAction: zoomBtn.activate()
+          Keys.onReturnPressed: zoomBtn.activate()
+          Keys.onEnterPressed: zoomBtn.activate()
+          Keys.onSpacePressed: zoomBtn.activate()
+          color: active ? root.theme.card : "transparent"
+          border.width: activeFocus
+            ? root.theme.focusWidth : root.theme.borderWidth
+          border.color: active || activeFocus
+            ? root.theme.accent : root.theme.cardEdge
           Text {
             anchors.centerIn: parent
             text: zoomBtn.modelData.label
             color: zoomBtn.active
-              ? (root.theme ? root.theme.accent : "#66c0f4")
-              : (root.theme ? root.theme.muted : "#8f98a0")
-            font.pixelSize: root.theme ? root.theme.fontS : 11
+              ? root.theme.accent : root.theme.muted
+            font.pixelSize: root.theme.fontS
             font.bold: zoomBtn.active
           }
           MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.zoomPresetRequested(zoomBtn.modelData.scale)
+            onClicked: zoomBtn.activate()
           }
         }
       }
     }
 
     Text {
-      text: "Arrows/stick move · Enter/A play · type to search · Ctrl+Scroll zoom · Esc/B quit"
-      color: root.theme ? root.theme.muted : "#8f98a0"
-      font.pixelSize: root.theme ? root.theme.fontS : 11
+      text: "Arrows/stick move · Enter/A play · type to search · Ctrl+N add · Esc/B quit"
+      color: root.theme.muted
+      font.pixelSize: root.theme.fontS
     }
 
     Rectangle {
       id: addBtn
-      implicitWidth: addLabel.implicitWidth + (root.theme ? root.theme.u(24) : 24)
-      implicitHeight: root.theme ? root.theme.u(30) : 30
-      radius: 6
-      color: addMa.containsMouse
-        ? (root.theme ? root.theme.accent : "#66c0f4")
-        : (root.theme ? root.theme.card : "#2a475e")
+      implicitWidth: addLabel.implicitWidth + root.theme.u(24)
+      implicitHeight: root.theme.controlHeight
+      radius: root.theme.radius
+      activeFocusOnTab: true
+      Accessible.role: Accessible.Button
+      Accessible.name: "Add game"
+      Accessible.onPressAction: root.addRequested()
+      Keys.onReturnPressed: root.addRequested()
+      Keys.onEnterPressed: root.addRequested()
+      Keys.onSpacePressed: root.addRequested()
+      color: root.theme.card
+      border.width: activeFocus
+        ? root.theme.focusWidth : root.theme.borderWidth
+      border.color: addMa.containsMouse || activeFocus
+        ? root.theme.accent : root.theme.cardEdge
       Text {
         id: addLabel
         anchors.centerIn: parent
         text: "+ Add game"
-        color: addMa.containsMouse ? "#0d1117" : (root.theme ? root.theme.text : "#c7d5e0")
-        font.pixelSize: root.theme ? root.theme.fontS : 11
+        color: addMa.containsMouse || addBtn.activeFocus
+          ? root.theme.accent : root.theme.text
+        font.pixelSize: root.theme.fontS
         font.bold: true
       }
       MouseArea {
@@ -178,30 +206,42 @@ ColumnLayout {
   // Category filter chips: multi-select, empty selection = all.
   Flow {
     Layout.fillWidth: true
-    spacing: 6
+    spacing: root.theme.space1
     Repeater {
       model: root.categories
       delegate: Rectangle {
         id: chip
         required property var modelData
         readonly property bool checked: (root.prefs.categories || []).indexOf(modelData) !== -1
-        width: chipLabel.implicitWidth + (root.theme ? root.theme.u(16) : 16)
-        height: root.theme ? root.theme.u(24) : 24
-        radius: 12
-        color: checked
-          ? (root.theme ? root.theme.accent : "#66c0f4")
-          : (root.theme ? root.theme.card : "#2a475e")
+        function activate() { root.categoryToggled(modelData) }
+        width: chipLabel.implicitWidth + root.theme.u(16)
+        height: root.theme.controlHeight
+        radius: root.theme.radius
+        activeFocusOnTab: true
+        Accessible.role: Accessible.CheckBox
+        Accessible.name: "Filter " + modelData
+        Accessible.checked: checked
+        Accessible.onToggleAction: chip.activate()
+        Keys.onReturnPressed: chip.activate()
+        Keys.onEnterPressed: chip.activate()
+        Keys.onSpacePressed: chip.activate()
+        color: root.theme.card
+        border.width: activeFocus
+          ? root.theme.focusWidth : root.theme.borderWidth
+        border.color: checked || activeFocus
+          ? root.theme.accent : root.theme.cardEdge
         Text {
           id: chipLabel
           anchors.centerIn: parent
-          text: chip.modelData
-          color: chip.checked ? "#0d1117" : (root.theme ? root.theme.muted : "#8f98a0")
-          font.pixelSize: root.theme ? root.theme.fontS : 11
+          text: (chip.checked ? "✓ " : "") + chip.modelData
+          color: chip.checked
+            ? root.theme.accent : root.theme.muted
+          font.pixelSize: root.theme.fontS
         }
         MouseArea {
           anchors.fill: parent
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.categoryToggled(chip.modelData)
+          onClicked: chip.activate()
         }
       }
     }

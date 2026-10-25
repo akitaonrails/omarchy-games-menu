@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,6 +18,7 @@ permissions:
 
 jobs:
   test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
 
     steps:
@@ -41,10 +45,47 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+  msrv:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@1.88
+      - name: Check minimum Rust version
+        run: cargo check --workspace --all-targets --locked
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-audit
+      - name: Audit dependencies and yanked crates
+        run: cargo audit
+
+  machete:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-machete
+      - name: Check unused dependencies
+        run: cargo machete
+
   # Builds the package the same way the AUR PKGBUILD does, but from the PR's
   # checkout instead of a published tag tarball, so packaging breakage shows
   # up before a release.
   pkgbuild:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     container: archlinux:latest
 
@@ -57,6 +98,9 @@ jobs:
         # here lets makepkg run as the unprivileged builder without --syncdeps
         # (sudo in this container has no passwordless path).
         run: pacman -Syu --noconfirm --needed base-devel git cargo rust cmake namcap quickshell
+
+      - name: Lint QML
+        run: /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml
 
       - name: Build package from local source
         run: |

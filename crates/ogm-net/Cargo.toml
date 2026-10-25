@@ -2,12 +2,11 @@
 name = "ogm-net"
 version = "0.1.0"
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 ogm-core = { path = "../ogm-core" }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 async-trait = "0.1"
 thiserror = "2"

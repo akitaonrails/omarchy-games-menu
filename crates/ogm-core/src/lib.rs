@@ -1,3 +1,4 @@
+pub mod appearance;
 pub mod catalog;
 pub mod desktop;
 pub mod filter;
@@ -10,6 +11,7 @@ pub mod time;
 pub mod version;
 pub mod web;
 
+pub use appearance::{parse_hyprland_animations, Appearance, AppearanceError};
 pub use catalog::{merge_catalog_entries, CatalogEntry};
 pub use desktop::{DesktopEntry, OgmMeta};
 pub use filter::{filter_games, GameFilter};

@@ -70,6 +70,9 @@ works; cards fall back to themed placeholders/icons.
 - UI size follows the monitor's Hyprland output scale automatically (detected via
   `hyprctl monitors -j` for the screen the overlay appears on; falls back to 1.0
   off-Hyprland).
+- Colors, launcher opacity, font size, and reduced motion follow Omarchy's
+  current theme and user settings. Cover zoom remains independent of text size,
+  and appearance changes are picked up while the overlay is open.
 - Sort by **Most played** (frecency: play count weighted by recency), **Name**,
   **Date added**, or **Release date**; click the active sort to flip direction.
 - Filter by category chips and the search field.
@@ -89,6 +92,7 @@ ogm add --name N --exec CMD [--category C] [--github owner/repo] [--sgdb-query Q
 ogm remove <id> | hide <id> | show <id>
 ogm list [--json]
 ogm doctor                              # paths, keys, catalog/fragment counts
+ogm appearance                          # current Omarchy appearance as JSON
 ```
 
 ## Files
@@ -141,6 +145,9 @@ After changing fragments or desktop files, run `ogm scan` (idempotent). Then
 ```
 cargo test                                  # unit + integration tests, no network
 cargo clippy --workspace --all-targets -- -D warnings
+/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml
+cargo +1.88 check --workspace --all-targets --locked
+cargo audit && cargo machete
 ```
 
 Workspace layout: `crates/ogm-core` (pure domain logic: desktop parsing, catalog,

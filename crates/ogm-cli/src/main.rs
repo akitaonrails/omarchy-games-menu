@@ -6,7 +6,7 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use ogm_core::{
     catalog::CatalogEntry, desktop, glob::matches_any, merge_catalog_entries, model::CustomGame,
-    reconcile, Category, WebInfo,
+    parse_hyprland_animations, reconcile, Appearance, Category, WebInfo,
 };
 use ogm_net::{ArtworkSource, GithubClient, PageClient, PageSource, ReleasesSource, SgdbClient};
 use ogm_store::{
@@ -81,6 +81,8 @@ enum Command {
         #[arg(long)]
         list: bool,
     },
+    /// Print the current Omarchy appearance as JSON (used by the overlay)
+    Appearance,
 }
 
 fn now_rfc3339() -> String {
@@ -694,6 +696,62 @@ fn run_list(paths: &Paths, json: bool) -> Result<()> {
     Ok(())
 }
 
+fn read_optional(path: &Path) -> Option<String> {
+    std::fs::read_to_string(path).ok()
+}
+
+fn run_appearance() -> Result<()> {
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .context("HOME is not set")?;
+    let state_home = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .unwrap_or_else(|| home.join(".local/state"));
+    let config_home = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .unwrap_or_else(|| home.join(".config"));
+    let theme_dir = state_home.join("omarchy/current/theme");
+    let colors = read_optional(&theme_dir.join("colors.toml"));
+    let theme_shell = read_optional(&theme_dir.join("shell.toml"));
+    let user_shell = read_optional(&config_home.join("omarchy/shell.toml"));
+    let animations = std::process::Command::new("hyprctl")
+        .args(["getoption", "animations:enabled", "-j"])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|json| parse_hyprland_animations(&json));
+
+    let appearance = colors
+        .as_deref()
+        .map(|colors| {
+            Appearance::from_sources(
+                colors,
+                theme_shell.as_deref(),
+                user_shell.as_deref(),
+                animations,
+            )
+        })
+        .transpose()
+        .unwrap_or_else(|error| {
+            eprintln!("warning: {error}; using built-in appearance");
+            None
+        })
+        .unwrap_or_else(|| {
+            Appearance::fallback_from_shell(
+                theme_shell.as_deref(),
+                user_shell.as_deref(),
+                animations,
+            )
+        });
+    println!("{}", serde_json::to_string(&appearance)?);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -750,6 +808,7 @@ async fn main() -> Result<()> {
                 gamepad::run()?
             }
         }
+        Command::Appearance => run_appearance()?,
     }
     Ok(())
 }

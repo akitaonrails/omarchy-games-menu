@@ -20,13 +20,10 @@
 
 ## Commands
 
-- `cargo test --workspace` — 146+ tests, no network required.
+- `cargo test --workspace` — 130+ tests, no network required.
 - `cargo clippy --workspace --all-targets --locked -- -D warnings` and
   `cargo fmt --all --check` — both enforced in CI.
-- QML lint: `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml` — the six
-  remaining `id-shadows-member` warnings (`Theme { id: theme }` vs the `theme`
-  property on GameGrid/GameCard) are known and shared with the production
-  omarchy shell.
+- QML lint: `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml` — clean.
 - Local install: `./install.sh` (symlinks into `~/.local/bin`).
 - Preview QML against a fixture: see the header comment in `qml/shell.qml`.
 
@@ -39,6 +36,10 @@
   mirrored in `qml/shell.qml` `frecencyScore` — change both together.
 - UI prefs (`prefs.json`) are owned by the QML side; the backend must never
   write that file. `state.json` is the reverse: backend-owned.
+- `ogm appearance` is the JSON boundary for Omarchy colors, launcher opacity,
+  text size and reduced motion. Keep its parsing pure in `ogm-core`; QML watches
+  the canonical Omarchy files and reloads it without adding appearance fields
+  to `state.json`.
 - Controller input: `ogm gamepad` streams one JSON edge per line
   (`{"type":"dir",...}` / `{"type":"button",...}`) and the overlay parses it
   with a SplitParser. Devices are found by capability in
