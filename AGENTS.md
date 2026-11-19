@@ -20,7 +20,7 @@
 
 ## Commands
 
-- `cargo test --workspace` — 130+ tests, no network required.
+- `cargo test --workspace` — 166+ tests, no network required.
 - `cargo clippy --workspace --all-targets --locked -- -D warnings` and
   `cargo fmt --all --check` — both enforced in CI.
 - QML lint: `/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml qml/*.qml` — clean.
@@ -60,6 +60,12 @@
   fetches for newly added games. The backend takes `cache/refresh.lock` so
   overlapping overlay launches can't race, and saves `state.json` after each
   cover so a killed refresh keeps its progress instead of orphaning files.
+- Categories carry a meaning the sections depend on: `emulator` is the
+  emulator *application*, `emulated` a single game running through one, and
+  `launcher` a hub fronting several games (its titles go in `includes` /
+  `X-OGM-Includes`, which search matches so "Daytona" finds the hub). The
+  Launchers section renders between Games and Emulators. Tagging a game
+  `emulator` is the mistake that put Ratchet & Clank and GT6 in with Dolphin.
 - External tools integrate via `~/.config/ogm/catalog.d/*.toml` fragments
   (same `[[game]]` schema as `catalog.toml`) + `ogm scan`. distrobox-gaming's
   `ogm_catalog` role is the reference consumer.

@@ -9,6 +9,12 @@ pub enum Category {
     Fangame,
     Wine,
     Arcade,
+    /// A single game that runs through an emulator or an emulator-derived
+    /// runtime. The game, not the emulator — `Emulator` is the application.
+    Emulated,
+    /// A hub that fronts several games behind one entry (an arcade series,
+    /// a multi-title Proton launcher). `includes` lists what it covers.
+    Launcher,
     Emulator,
     Tool,
     Custom,
@@ -23,6 +29,8 @@ impl Category {
             Category::Fangame => "fangame",
             Category::Wine => "wine",
             Category::Arcade => "arcade",
+            Category::Emulated => "emulated",
+            Category::Launcher => "launcher",
             Category::Emulator => "emulator",
             Category::Tool => "tool",
             Category::Custom => "custom",
@@ -37,6 +45,8 @@ impl Category {
             "fangame" => Category::Fangame,
             "wine" => Category::Wine,
             "arcade" => Category::Arcade,
+            "emulated" => Category::Emulated,
+            "launcher" => Category::Launcher,
             "emulator" => Category::Emulator,
             "tool" => Category::Tool,
             "custom" => Category::Custom,
@@ -144,6 +154,10 @@ pub struct Game {
     pub sgdb: Option<SgdbInfo>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub web: Option<WebInfo>,
+    /// Titles a `Launcher` entry fronts; empty for everything else. Search
+    /// matches these, so "Daytona" finds the arcade hub that runs it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub includes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -176,6 +190,19 @@ pub const DEFAULT_ICON: &str = "applications-games";
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn launcher_and_emulated_round_trip() {
+        for c in [Category::Launcher, Category::Emulated] {
+            assert_eq!(Category::from_name(c.as_str()), Some(c));
+        }
+        assert_eq!(Category::from_name("LAUNCHER"), Some(Category::Launcher));
+        // The emulator application and an emulated game stay distinct.
+        assert_ne!(
+            Category::from_name("emulated"),
+            Category::from_name("emulator")
+        );
+    }
 
     #[test]
     fn category_serializes_lowercase() {
@@ -224,9 +251,13 @@ mod tests {
                 checked_at: Some("2026-09-13T12:00:00Z".into()),
                 has_update: false,
             }),
+            includes: Vec::new(),
         };
         let v: serde_json::Value = serde_json::to_value(&game).unwrap();
         assert_eq!(v["category"], "port");
+        // Absent, not an empty array: QML reads this as a missing key and
+        // every pre-launcher entry keeps the exact shape it had before.
+        assert!(v.get("includes").is_none());
         assert_eq!(v["custom"], false);
         assert_eq!(v["play_count"], 0);
         assert_eq!(v["last_played"], serde_json::Value::Null);

@@ -112,13 +112,14 @@ ogm appearance                          # current Omarchy appearance as JSON
 
 1. **It carries `X-OGM-Managed=true`** (primary mechanism, rendered by
    distrobox-gaming). Optional keys refine the entry:
-   `X-OGM-Category` (port|decomp|recomp|fangame|wine|arcade|emulator|tool|custom,
+   `X-OGM-Category` (port|decomp|recomp|fangame|wine|arcade|emulated|launcher|emulator|tool|custom,
    default `custom`), `X-OGM-GitHub` (owner/repo), `X-OGM-SGDBQuery`
    (SteamGridDB search name), `X-OGM-WebURL` (project page),
    `X-OGM-UpdateURL` (page polled for changes; falls back to WebURL),
    `X-OGM-UpdateRegex` (capture group 1 = version string; without a group the
-   whole match). X-OGM values override catalog.d fragments and the
-   bundled catalog for the same desktop file.
+   whole match), `X-OGM-Includes` (`;`-separated titles a `launcher` entry
+   fronts; search matches these too). X-OGM values override catalog.d
+   fragments and the bundled catalog for the same desktop file.
 2. **Its file stem matches `desktop_globs` in config.toml** (legacy fallback,
    keeps working unchanged for unmigrated entries).
 
@@ -132,10 +133,26 @@ catalog; a fragment entry with the same `desktop_id` (or `id`) overrides it:
 [[game]]
 id = "my-port"
 desktop_id = "gaming-my-port"     # desktop file stem, without .desktop
-category = "port"                 # port|decomp|recomp|fangame|wine|arcade|emulator|tool|custom
+category = "port"                 # port|decomp|recomp|fangame|wine|arcade|emulated|launcher|emulator|tool|custom
 github = "owner/repo"             # optional, enables release checks
 sgdb_query = "My Port"            # optional, enables SteamGridDB art/metadata
+includes = ["Game A", "Game B"]   # optional, only for category = "launcher"
 ```
+
+### Choosing a category
+
+The sections are keyed off it: `launcher` renders between **Games** and
+**Emulators**, `emulator` and `tool` get their own sections, everything else
+lands in **Games**.
+
+| Category | Means |
+| --- | --- |
+| `emulator` | The emulator *application* — RPCS3, Dolphin, RetroArch. |
+| `emulated` | A single *game* that runs through an emulator or an emulator-derived runtime (a GT6-tuned RPCS3 build, a game launched in Lichii). |
+| `launcher` | One entry fronting several games — an arcade series hub, a multi-title Proton launcher. List them in `includes`. |
+| `port`/`decomp`/`recomp` | A native build of one game: a port, a decompilation, a static recompilation. |
+| `arcade` | An arcade title (TeknoParrot and friends). A multi-game arcade *hub* is a `launcher`. |
+| `fangame`/`wine`/`tool`/`custom` | Fan-made game; Wine/Proton title; utility; anything hand-added. |
 
 After changing fragments or desktop files, run `ogm scan` (idempotent). Then
 `ogm refresh` picks up art and release info in the background.

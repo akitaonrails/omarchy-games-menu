@@ -105,6 +105,7 @@ mod tests {
             github: None,
             sgdb: None,
             web: None,
+            includes: Vec::new(),
         }
     }
 

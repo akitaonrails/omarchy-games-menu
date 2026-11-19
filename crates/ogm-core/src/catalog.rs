@@ -24,13 +24,17 @@ pub struct CatalogEntry {
     pub version_file: Option<String>,
     #[serde(default)]
     pub hidden_default: bool,
+    /// Titles a `launcher` entry fronts.
+    #[serde(default)]
+    pub includes: Vec<String>,
 }
 
 /// Merge catalog sources in priority order: earlier sources win position,
 /// later sources win content. An entry from `overlay` replaces an entry from
 /// `base` when their `desktop_id` matches, or (for custom-style entries without
-/// a desktop file) when their `id` matches. An omitted artwork query inherits
-/// the bundled value so metadata-only fragments do not disable cover fetching.
+/// a desktop file) when their `id` matches. An omitted artwork query or title
+/// list inherits the bundled value so metadata-only fragments do not disable
+/// cover fetching or drop what a launcher covers.
 pub fn merge_catalog_entries(base: &[CatalogEntry], overlay: &[CatalogEntry]) -> Vec<CatalogEntry> {
     let mut out: Vec<CatalogEntry> = base.to_vec();
     for entry in overlay {
@@ -42,6 +46,9 @@ pub fn merge_catalog_entries(base: &[CatalogEntry], overlay: &[CatalogEntry]) ->
                 let mut merged = entry.clone();
                 if merged.sgdb_query.is_none() {
                     merged.sgdb_query = out[i].sgdb_query.clone();
+                }
+                if merged.includes.is_empty() {
+                    merged.includes = out[i].includes.clone();
                 }
                 out[i] = merged;
             }
@@ -68,6 +75,7 @@ mod tests {
             update_regex: None,
             version_file: None,
             hidden_default: false,
+            includes: Vec::new(),
         }
     }
 
@@ -85,6 +93,7 @@ mod tests {
             update_regex: None,
             version_file: None,
             hidden_default: false,
+            includes: Vec::new(),
         };
         assert!(!e.hidden_default);
     }

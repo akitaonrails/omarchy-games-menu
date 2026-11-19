@@ -16,6 +16,8 @@ pub struct OgmMeta {
     pub web_url: Option<String>,
     pub update_url: Option<String>,
     pub update_regex: Option<String>,
+    /// X-OGM-Includes: titles a launcher entry fronts, `;`-separated.
+    pub includes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -26,6 +28,16 @@ pub struct DesktopEntry {
     pub comment: Option<String>,
     pub categories: Vec<String>,
     pub ogm: Option<OgmMeta>,
+}
+
+/// `;`-separated list value, the same shape the spec's `Categories` key uses.
+fn split_list(value: &str) -> Vec<String> {
+    value
+        .split(';')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect()
 }
 
 const FIELD_CODES: [&str; 16] = [
@@ -102,6 +114,7 @@ pub fn parse_desktop(content: &str) -> DesktopEntry {
                 "x-ogm-weburl" => meta.web_url = Some(value.to_string()),
                 "x-ogm-updateurl" => meta.update_url = Some(value.to_string()),
                 "x-ogm-updateregex" => meta.update_regex = Some(value.to_string()),
+                "x-ogm-includes" => meta.includes = Some(split_list(value)),
                 _ => {}
             }
             continue;
@@ -111,14 +124,7 @@ pub fn parse_desktop(content: &str) -> DesktopEntry {
             "Exec" => entry.exec = Some(strip_field_codes(&unescape(value.trim()))),
             "Icon" => entry.icon = Some(value.trim().to_string()),
             "Comment" => entry.comment = Some(unescape(value.trim())),
-            "Categories" => {
-                entry.categories = value
-                    .split(';')
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string())
-                    .collect();
-            }
+            "Categories" => entry.categories = split_list(value),
             _ => {}
         }
     }
@@ -128,6 +134,25 @@ pub fn parse_desktop(content: &str) -> DesktopEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_includes_list() {
+        let content = "[Desktop Entry]\nName=Hub\nX-OGM-Managed=true\n\
+            X-OGM-Category=launcher\n\
+            X-OGM-Includes=OutRun 2 SP; SEGA Rally 3 ;;Daytona USA\n";
+        let meta = parse_desktop(content).ogm.unwrap();
+        assert_eq!(meta.category, Some(Category::Launcher));
+        assert_eq!(
+            meta.includes.unwrap(),
+            vec!["OutRun 2 SP", "SEGA Rally 3", "Daytona USA"]
+        );
+    }
+
+    #[test]
+    fn absent_includes_is_none_not_empty() {
+        let content = "[Desktop Entry]\nName=X\nX-OGM-Managed=true\n";
+        assert_eq!(parse_desktop(content).ogm.unwrap().includes, None);
+    }
 
     #[test]
     fn parses_outrun_fixture() {

@@ -58,7 +58,7 @@ ShellRoot {
   })
   property var prefs: defaultPrefs
 
-  readonly property var allCategories: ["port", "decomp", "recomp", "fangame", "wine", "arcade", "emulator", "tool", "custom"]
+  readonly property var allCategories: ["port", "decomp", "recomp", "fangame", "wine", "arcade", "emulated", "launcher", "emulator", "tool", "custom"]
   readonly property var sortKeys: ["most_played", "name", "date_added", "release_date"]
 
   readonly property bool refreshing: scanProc.running || refreshProc.running
@@ -331,7 +331,8 @@ ShellRoot {
   // Games, emulators and tools are never mixed: the grid renders one section
   // per group, each internally sorted by the active sort key.
   readonly property var groupOrder: [
-    { key: "games", title: "Games", categories: ["port", "decomp", "recomp", "fangame", "wine", "arcade", "custom"] },
+    { key: "games", title: "Games", categories: ["port", "decomp", "recomp", "fangame", "wine", "arcade", "emulated", "custom"] },
+    { key: "launchers", title: "Launchers", categories: ["launcher"] },
     { key: "emulators", title: "Emulators", categories: ["emulator"] },
     { key: "tools", title: "Tools", categories: ["tool"] }
   ]
@@ -359,6 +360,16 @@ ShellRoot {
     return count * decay
   }
 
+  // Mirrors ogm-core::filter::GameFilter::matches — a launcher is findable
+  // by what it runs, not just by the hub's own name.
+  function matchesQuery(g, q) {
+    if (String(g.name || "").toLowerCase().indexOf(q) !== -1) return true
+    var inc = g.includes || []
+    for (var i = 0; i < inc.length; i++)
+      if (String(inc[i]).toLowerCase().indexOf(q) !== -1) return true
+    return false
+  }
+
   function computeVisible() {
     var games = (state && state.games) || []
     var cats = prefs.categories || []
@@ -366,7 +377,7 @@ ShellRoot {
     var filtered = games.filter(function(g) {
       if (!g) return false
       if (cats.length > 0 && cats.indexOf(g.category) === -1) return false
-      if (q && String(g.name || "").toLowerCase().indexOf(q) === -1) return false
+      if (q && !matchesQuery(g, q)) return false
       return true
     })
     filtered.sort(gameComparator)

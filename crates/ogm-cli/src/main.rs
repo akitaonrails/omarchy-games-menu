@@ -221,6 +221,11 @@ fn synthesize_marker_overlay(
                 .or_else(|| base.and_then(|e| e.update_regex.clone())),
             version_file: base.and_then(|e| e.version_file.clone()),
             hidden_default: base.map(|e| e.hidden_default).unwrap_or(false),
+            includes: meta
+                .includes
+                .clone()
+                .or_else(|| base.map(|e| e.includes.clone()))
+                .unwrap_or_default(),
         });
     }
     overlay
@@ -890,6 +895,7 @@ mod tests {
             update_regex: None,
             version_file: None,
             hidden_default: false,
+            includes: Vec::new(),
         }]
     }
 
@@ -909,6 +915,18 @@ mod tests {
             "github falls through from catalog"
         );
         assert_eq!(overlay[0].name.as_deref(), Some("Ship of Harkinian"));
+    }
+
+    #[test]
+    fn marker_declares_a_launcher_with_its_titles() {
+        let d = marked(
+            "gaming-sega-racing",
+            "[Desktop Entry]\nName=Sega Arcade Racing\nX-OGM-Managed=true\n\
+             X-OGM-Category=launcher\nX-OGM-Includes=Daytona USA;SEGA Rally 3\n",
+        );
+        let overlay = synthesize_marker_overlay(&[d], &catalog_fixture());
+        assert_eq!(overlay[0].category, Category::Launcher);
+        assert_eq!(overlay[0].includes, vec!["Daytona USA", "SEGA Rally 3"]);
     }
 
     #[test]

@@ -52,6 +52,14 @@ Item {
     if (inst) return "installed: " + inst
     return ""
   }
+  readonly property var includedTitles: (game && game.includes) || []
+  // "launcher · 5 titles" — the count is the useful part of a hub's chip.
+  readonly property string categoryLabel: {
+    var c = game && game.category ? String(game.category) : ""
+    if (c !== "launcher" || includedTitles.length === 0) return c
+    return c + " · " + includedTitles.length + " titles"
+  }
+
   Accessible.role: Accessible.ListItem
   Accessible.name: game && game.name ? game.name : "Game"
   Accessible.description: versionLine
@@ -176,10 +184,21 @@ Item {
       Text {
         id: catLabel
         anchors.centerIn: parent
-        text: root.game && root.game.category ? root.game.category : ""
+        text: root.categoryLabel
         color: root.theme.muted
         font.pixelSize: root.theme.fontS
       }
+    }
+
+    // What a launcher fronts, so the card says more than the hub's name.
+    Text {
+      visible: root.includedTitles.length > 0
+      width: parent.width
+      text: root.includedTitles.join(" · ")
+      color: root.theme.muted
+      font.pixelSize: root.theme.fontS
+      elide: Text.ElideRight
+      maximumLineCount: 1
     }
 
     Text {

@@ -138,6 +138,7 @@ mod tests {
                 hero: None,
             }),
             web: None,
+            includes: Vec::new(),
         }
     }
 

@@ -10,7 +10,15 @@ impl GameFilter {
     pub fn matches(&self, game: &Game) -> bool {
         let category_ok = self.categories.is_empty() || self.categories.contains(&game.category);
         let query = self.query.trim();
-        let query_ok = query.is_empty() || game.name.to_lowercase().contains(&query.to_lowercase());
+        // A launcher is found by what it runs as well as by its own name:
+        // searching "Daytona" should surface the arcade hub that hosts it.
+        let needle = query.to_lowercase();
+        let query_ok = query.is_empty()
+            || game.name.to_lowercase().contains(&needle)
+            || game
+                .includes
+                .iter()
+                .any(|t| t.to_lowercase().contains(&needle));
         category_ok && query_ok
     }
 }
@@ -40,6 +48,7 @@ mod tests {
             github: None,
             sgdb: None,
             web: None,
+            includes: Vec::new(),
         }
     }
 
@@ -49,6 +58,23 @@ mod tests {
             game("dkc", "Donkey Kong Country Recomp", Category::Recomp),
             game("sorr", "Streets of Rage Remake", Category::Wine),
         ]
+    }
+
+    #[test]
+    fn query_matches_a_launchers_included_titles() {
+        let mut hub = game("sega-racing", "Sega Arcade Racing", Category::Launcher);
+        hub.includes = vec!["Daytona USA".into(), "SEGA Rally 3".into()];
+        let games = vec![hub];
+        let hit = GameFilter {
+            categories: vec![],
+            query: "daytona".into(),
+        };
+        assert_eq!(filter_games(&games, &hit).len(), 1);
+        let miss = GameFilter {
+            categories: vec![],
+            query: "outrun".into(),
+        };
+        assert!(filter_games(&games, &miss).is_empty());
     }
 
     #[test]

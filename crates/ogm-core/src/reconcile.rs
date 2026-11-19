@@ -43,29 +43,19 @@ pub fn reconcile(
 
     let mut games = Vec::new();
     for (entry, desktop_id) in discovered {
-        let (id, name, category, github, web) = match catalog_by_desktop.get(desktop_id.as_str()) {
-            Some(c) => (
-                c.id.clone(),
-                c.name
-                    .clone()
-                    .or_else(|| entry.name.clone())
-                    .unwrap_or_else(|| desktop_id.clone()),
-                c.category,
-                c.github.clone(),
-                (
-                    c.web_url.clone(),
-                    c.update_url.clone(),
-                    c.update_regex.clone(),
-                ),
-            ),
-            None => (
-                desktop_id.clone(),
-                entry.name.clone().unwrap_or_else(|| desktop_id.clone()),
-                Category::Custom,
-                None,
-                (None, None, None),
-            ),
-        };
+        // A desktop file with no catalog entry still becomes a game, just an
+        // uncurated one: its own Name, no metadata, category `custom`.
+        let cat = catalog_by_desktop.get(desktop_id.as_str()).copied();
+        let id = cat
+            .map(|c| c.id.clone())
+            .unwrap_or_else(|| desktop_id.clone());
+        let name = cat
+            .and_then(|c| c.name.clone())
+            .or_else(|| entry.name.clone())
+            .unwrap_or_else(|| desktop_id.clone());
+        let category = cat.map(|c| c.category).unwrap_or(Category::Custom);
+        let github = cat.and_then(|c| c.github.clone());
+        let includes = cat.map(|c| c.includes.clone()).unwrap_or_default();
         let prior = prev.get(id.as_str());
         let installed_version = installed_versions
             .get(&id)
@@ -93,9 +83,14 @@ pub fn reconcile(
                 .or_else(|| github.map(GithubInfo::unchecked)),
             sgdb: prior.and_then(|g| g.sgdb.clone()),
             web: web_with_prior(
-                WebInfo::new(web.0, web.1, web.2),
+                WebInfo::new(
+                    cat.and_then(|c| c.web_url.clone()),
+                    cat.and_then(|c| c.update_url.clone()),
+                    cat.and_then(|c| c.update_regex.clone()),
+                ),
                 prior.and_then(|g| g.web.as_ref()),
             ),
+            includes,
         });
     }
 
@@ -130,6 +125,7 @@ pub fn reconcile(
                 ),
                 prior.and_then(|g| g.web.as_ref()),
             ),
+            includes: Vec::new(),
         });
     }
 
@@ -171,6 +167,7 @@ mod tests {
             update_regex: None,
             version_file: None,
             hidden_default: false,
+            includes: Vec::new(),
         }
     }
 
